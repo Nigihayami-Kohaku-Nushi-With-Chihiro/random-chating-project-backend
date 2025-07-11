@@ -1,14 +1,11 @@
 package random.chating.org.randomchatingproject.entity;
 
 import jakarta.persistence.*;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.*;
-import org.springframework.data.annotation.Id;
+import lombok.Setter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -25,7 +22,7 @@ import java.util.Collections;
 @AllArgsConstructor
 public class User implements UserDetails {
 
-    @Id
+    @Id  // JPA용 @Id (jakarta.persistence.Id)
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
@@ -46,6 +43,13 @@ public class User implements UserDetails {
 
     private Integer age; // JWT에 넣을 정보 + 매칭 조건
 
+    private boolean isVerified = false;
+
+    // ========== 권한 관리 ==========
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private Role role = Role.USER; // 기본값: 일반 사용자
+
     // ========== Spring Security 계정 상태 ==========
     @Builder.Default
     private Boolean enabled = true;
@@ -62,31 +66,36 @@ public class User implements UserDetails {
     // ========== Spring Security UserDetails 구현 ==========
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
+        // Role에 따라 권한 부여
+        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
     @Override
     public boolean isAccountNonExpired() {
-        return accountNonExpired;
+        return accountNonExpired != null ? accountNonExpired : true;
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return accountNonLocked;
+        return accountNonLocked != null ? accountNonLocked : true;
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return credentialsNonExpired;
+        return credentialsNonExpired != null ? credentialsNonExpired : true;
     }
 
     @Override
     public boolean isEnabled() {
-        return enabled;
+        return enabled != null ? enabled : true;
     }
 
     // ========== Enum 정의 ==========
     public enum Gender {
         MALE, FEMALE
+    }
+
+    public enum Role {
+        USER, ADMIN
     }
 }

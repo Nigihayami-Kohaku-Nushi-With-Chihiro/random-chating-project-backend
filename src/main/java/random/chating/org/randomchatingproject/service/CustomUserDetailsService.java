@@ -12,17 +12,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
 
+    public CustomUserDetailsService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
     /**
      * JWT 필터에서 호출됨
      * JWT 토큰의 username으로 사용자 정보 조회
      */
-
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         log.debug("JWT에서 사용자 정보 로드 시도: {}", username);
@@ -59,34 +61,6 @@ public class CustomUserDetailsService implements UserDetailsService {
         if (!user.isCredentialsNonExpired()) {
             log.warn("비밀번호 만료된 계정: {}", user.getUsername());
         }
-    }
-
-    // ========== 매칭 시스템용 조회 메서드들 ==========
-
-    /**
-     * 성별별 활성 사용자 수 조회
-     */
-    public long getActiveUserCountByGender(User.Gender gender) {
-        long count = userRepository.countByGenderAndEnabledTrue(gender);
-        log.debug("활성 사용자 수 조회: {} = {}명", gender, count);
-        return count;
-    }
-
-    /**
-     * 매칭 통계 조회 (대기 화면에서 표시용)
-     */
-    public MatchingStats getMatchingStats() {
-        long maleCount = userRepository.countByGenderAndEnabledTrue(User.Gender.MALE);
-        long femaleCount = userRepository.countByGenderAndEnabledTrue(User.Gender.FEMALE);
-
-        MatchingStats stats = MatchingStats.builder()
-                .maleCount(maleCount)
-                .femaleCount(femaleCount)
-                .totalCount(maleCount + femaleCount)
-                .build();
-
-        log.debug("매칭 통계: 남성 {}명, 여성 {}명", maleCount, femaleCount);
-        return stats;
     }
 
     /**
@@ -200,27 +174,5 @@ public class CustomUserDetailsService implements UserDetailsService {
      */
     public long getDisabledUsers() {
         return userRepository.countByEnabledFalse();
-    }
-}
-
-// ========== DTO 클래스 ==========
-
-/**
- * 매칭 통계 정보 DTO
- */
-@lombok.Data
-@lombok.Builder
-@lombok.NoArgsConstructor
-@lombok.AllArgsConstructor
-class MatchingStats {
-    private long maleCount;      // 남성 사용자 수
-    private long femaleCount;    // 여성 사용자 수
-    private long totalCount;     // 전체 사용자 수
-
-    /**
-     * 잠재적 매칭 가능 수 (남성, 여성 중 적은 수)
-     */
-    public long getPotentialMatches() {
-        return Math.min(maleCount, femaleCount);
     }
 }
