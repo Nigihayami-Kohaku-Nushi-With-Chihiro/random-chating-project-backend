@@ -13,7 +13,6 @@ import random.chating.org.randomchatingproject.service.AuthService;
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = "http://localhost:3000")
 public class UserController {
 
     private final AuthService authService;

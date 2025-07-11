@@ -33,12 +33,15 @@ public class SecurityConfig {
                 // 요청 권한 설정
                 .authorizeHttpRequests(authz -> authz
                         // 선택적 인증 경로 (로그인 안 해도 되지만, 로그인했으면 인증 정보 사용)
-                        .requestMatchers("/").hasAnyRole("USER", "ADMIN", "ANONYMOUS")
+                        .requestMatchers("/").permitAll()
 
                         // 완전히 인증 없이 접근 가능한 경로
                         .requestMatchers("/auth/**", "/user/register", "/user/verify").permitAll()
                         .requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
                         .requestMatchers("/ws/**").permitAll()
+
+                        // 로그인/회원가입 페이지 - 인증 없이 접근 가능
+                        .requestMatchers("/login", "/register").permitAll()
 
                         // 로그인/회원가입 API - 인증 없이 접근 가능해야 함!
                         .requestMatchers("/auth/login", "/auth/register").permitAll()

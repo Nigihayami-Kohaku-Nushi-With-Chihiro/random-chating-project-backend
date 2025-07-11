@@ -28,7 +28,7 @@ import random.chating.org.randomchatingproject.service.CustomUserDetailsService;
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-    private JwtProvider jwtProvider;
+    private final JwtProvider jwtProvider;  // final 키워드 추가!
     private final CustomUserDetailsService customUserDetailsService;
 
     @Override

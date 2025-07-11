@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import random.chating.org.randomchatingproject.dto.UserResponse;
 import random.chating.org.randomchatingproject.entity.User;
-
+/*
 @Slf4j
 @RestController
 public class AuthController {
@@ -42,3 +42,4 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 }
+ */

@@ -6,7 +6,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-@Configuration
+/* @Configuration
 @EnableScheduling
 @EnableTransactionManagement
 public class MvcConfiguration implements WebMvcConfigurer {
@@ -17,3 +17,4 @@ public class MvcConfiguration implements WebMvcConfigurer {
                 .allowedMethods("OPTIONS", "GET", "POST", "PUT", "DELETE");
     }
 }
+*/
