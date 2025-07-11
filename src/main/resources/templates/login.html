@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOGIN - RANDOM CHAT</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 배경 애니메이션 */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e, #0f3460);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 50%, rgba(0, 255, 255, 0.1) 0%, transparent 70%);
+        }
+
+        .bg-animation::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="%2300ffff" fill-opacity="0.05"><circle cx="30" cy="30" r="2"/></g></svg>');
+            animation: backgroundFloat 20s linear infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes backgroundFloat {
+            0% { transform: translateY(0px); }
+            100% { transform: translateY(-60px); }
+        }
+
+        /* 로그인 컨테이너 */
+        .login-container {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 25px;
+            padding: 0;
+            width: 100%;
+            max-width: 450px;
+            margin: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #00ffff, #ff0080, #ffff00, #00ffff);
+            background-size: 400% 400%;
+            border-radius: 25px;
+            z-index: -1;
+            animation: borderGlow 4s ease infinite;
+        }
+
+        @keyframes borderGlow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* 헤더 */
+        .login-header {
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(255, 0, 128, 0.2));
+            padding: 40px 30px;
+            text-align: center;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.1);
+        }
+
+        .login-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #00ffff;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+        }
+
+        .login-subtitle {
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 300;
+        }
+
+        /* 폼 */
+        .login-form {
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: #00ffff;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 1rem;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+            background: rgba(0, 0, 0, 0.6);
+        }
+
+        .form-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #00ffff;
+            font-size: 1.1rem;
+        }
+
+        .form-input.with-icon {
+            padding-left: 50px;
+        }
+
+        /* 체크박스 */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .custom-checkbox {
+            position: relative;
+            margin-right: 15px;
+        }
+
+        .custom-checkbox input {
+            opacity: 0;
+            position: absolute;
+        }
+
+        .checkmark {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(0, 255, 255, 0.5);
+            border-radius: 4px;
+            background: transparent;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .custom-checkbox input:checked ~ .checkmark {
+            background: linear-gradient(45deg, #00ffff, #ff0080);
+            border-color: #00ffff;
+        }
+
+        .custom-checkbox input:checked ~ .checkmark::after {
+            content: '\f00c';
+            font-family: 'Font Awesome 5 Free';
+            font-weight: 900;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            color: #000;
+            font-size: 12px;
+        }
+
+        .checkbox-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        /* 버튼 */
+        .btn {
+            width: 100%;
+            padding: 18px;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #ff0080, #ff8c00);
+            color: white;
+            border: 2px solid transparent;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(255, 0, 128, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        /* 알림 */
+        .alert {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        .alert-danger {
+            background: rgba(255, 23, 68, 0.1);
+            border: 1px solid rgba(255, 23, 68, 0.3);
+            color: #ff1744;
+        }
+
+        .alert-success {
+            background: rgba(0, 255, 127, 0.1);
+            border: 1px solid rgba(0, 255, 127, 0.3);
+            color: #00ff7f;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 로딩 스피너 */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 링크 */
+        .form-links {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .form-links a {
+            color: #00ffff;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .form-links a:hover {
+            color: #ff0080;
+            text-shadow: 0 0 10px rgba(255, 0, 128, 0.5);
+        }
+
+        .form-links p {
+            margin: 10px 0;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* 반응형 */
+        @media (max-width: 480px) {
+            .login-container {
+                margin: 10px;
+                border-radius: 20px;
+            }
+
+            .login-header {
+                padding: 30px 20px;
+            }
+
+            .login-form {
+                padding: 30px 20px;
+            }
+
+            .login-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="bg-animation"></div>
+
+<div class="login-container">
+    <div class="login-header">
+        <h1 class="login-title">
+            <i class="fas fa-bolt"></i> LOGIN
+        </h1>
+        <p class="login-subtitle">WELCOME BACK, LEGEND</p>
+    </div>
+
+    <div class="login-form">
+        <!-- 알림 -->
+        <div id="error-alert" class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span id="error-message"></span>
+        </div>
+
+        <div id="success-alert" class="alert alert-success">
+            <i class="fas fa-check-circle"></i>
+            <span id="success-message"></span>
+        </div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username" class="form-label">
+                    <i class="fas fa-user"></i> USERNAME / EMAIL
+                </label>
+                <input type="text"
+                       class="form-input"
+                       id="username"
+                       name="username"
+                       placeholder="Enter your username or email"
+                       required>
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">
+                    <i class="fas fa-lock"></i> PASSWORD
+                </label>
+                <input type="password"
+                       class="form-input"
+                       id="password"
+                       name="password"
+                       placeholder="Enter your password"
+                       required>
+            </div>
+
+            <div class="checkbox-group">
+                <label class="custom-checkbox">
+                    <input type="checkbox" id="rememberMe">
+                    <span class="checkmark"></span>
+                </label>
+                <label for="rememberMe" class="checkbox-label">
+                    REMEMBER ME
+                </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <span id="login-spinner" class="spinner" style="display: none;"></span>
+                <i class="fas fa-rocket"></i> ENTER THE MATRIX
+            </button>
+        </form>
+
+        <div class="form-links">
+            <p>DON'T HAVE AN ACCOUNT?
+                <a href="/register">CREATE ONE NOW</a>
+            </p>
+            <a href="/">
+                <i class="fas fa-arrow-left"></i> BACK TO HOME
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const submitButton = e.target.querySelector('button[type="submit"]');
+        const spinner = document.getElementById('login-spinner');
+        const errorAlert = document.getElementById('error-alert');
+        const successAlert = document.getElementById('success-alert');
+
+        // 로딩 상태
+        submitButton.disabled = true;
+        spinner.style.display = 'inline-block';
+        errorAlert.classList.remove('show');
+        successAlert.classList.remove('show');
+
+        const formData = {
+            username: document.getElementById('username').value,
+            password: document.getElementById('password').value
+        };
+
+        try {
+            const response = await fetch('/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // 로그인 성공
+                if (document.getElementById('rememberMe').checked) {
+                    localStorage.setItem('token', result.token);
+                } else {
+                    sessionStorage.setItem('token', result.token);
+                }
+
+                // 성공 메시지 표시
+                document.getElementById('success-message').textContent = 'LOGIN SUCCESSFUL! REDIRECTING...';
+                successAlert.classList.add('show');
+
+                // 1초 후 메인 페이지로 이동
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1000);
+
+            } else {
+                // 로그인 실패
+                document.getElementById('error-message').textContent = result.message.toUpperCase();
+                errorAlert.classList.add('show');
+            }
+
+        } catch (error) {
+            console.error('로그인 오류:', error);
+            document.getElementById('error-message').textContent = 'CONNECTION ERROR. TRY AGAIN.';
+            errorAlert.classList.add('show');
+        } finally {
+            // 로딩 상태 해제
+            submitButton.disabled = false;
+            spinner.style.display = 'none';
+        }
+    });
+
+    // 엔터키로 로그인
+    document.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+        }
+    });
+
+    // 배경 마우스 효과
+    document.addEventListener('mousemove', (e) => {
+        const bg = document.querySelector('.bg-animation');
+        const x = e.clientX / window.innerWidth;
+        const y = e.clientY / window.innerHeight;
+
+        bg.style.background = `
+                radial-gradient(circle at ${x * 100}% ${y * 100}%,
+                rgba(0, 255, 255, 0.15) 0%,
+                rgba(255, 0, 128, 0.1) 30%,
+                transparent 70%),
+                linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e, #0f3460)
+            `;
+    });
+</script>
+</body>
+</html>

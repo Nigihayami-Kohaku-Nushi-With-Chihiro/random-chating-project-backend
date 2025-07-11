@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REGISTER - RANDOM CHAT</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px 0;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* 배경 애니메이션 */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e, #0f3460);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 30% 70%, rgba(255, 0, 128, 0.1) 0%, transparent 70%);
+        }
+
+        .bg-animation::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="%23ff0080" fill-opacity="0.03"><circle cx="30" cy="30" r="2"/></g></svg>');
+            animation: backgroundFloat 25s linear infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes backgroundFloat {
+            0% { transform: translateY(0px) rotate(0deg); }
+            100% { transform: translateY(-60px) rotate(360deg); }
+        }
+
+        /* 회원가입 컨테이너 */
+        .register-container {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 25px;
+            padding: 0;
+            width: 100%;
+            max-width: 550px;
+            margin: 20px auto;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .register-container::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #ff0080, #00ffff, #ffff00, #ff0080);
+            background-size: 400% 400%;
+            border-radius: 25px;
+            z-index: -1;
+            animation: borderGlow 6s ease infinite;
+        }
+
+        @keyframes borderGlow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        <!DOCTYPE html>
+        <html lang="ko" xmlns:th="http://www.thymeleaf.org">
+        <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>REGISTER - RANDOM CHAT</title>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px 0;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* 배경 애니메이션 */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e, #0f3460);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 30% 70%, rgba(255, 0, 128, 0.1) 0%, transparent 70%);
+        }
+
+        .bg-animation::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="%23ff0080" fill-opacity="0.03"><circle cx="30" cy="30" r="2"/></g></svg>');
+            animation: backgroundFloat 25s linear infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes backgroundFloat {
+            0% { transform: translateY(0px) rotate(0deg); }
+            100% { transform: translateY(-60px) rotate(360deg); }
+        }
+
+        /* 회원가입 컨테이너 */
+        .register-container {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 25px;
+            padding: 0;
+            width: 100%;
+            max-width: 550px;
+            margin: 20px auto;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .register-container::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #ff0080, #00ffff, #ffff00, #ff0080);
+            background-size: 400% 400%;
+            border-radius: 25px;
+            z-index: -1;
+            animation: borderGlow 6s ease infinite;
+        }
+
+        @keyframes borderGlow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* 헤더 */
+        .register-header {
+            background: linear-gradient(135deg, rgba(255, 0, 128, 0.2), rgba(0, 255, 255, 0.2));
+            padding: 40px 30px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 0, 128, 0.1);
+        }
+
+        .register-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #ff0080;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255, 0, 128, 0.5);
+        }
+
+        .register-subtitle {
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 300;
+        }
+
+        /* 폼 */
+        .register-form {
+            padding: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: #ff0080;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(255, 0, 128, 0.3);
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 1rem;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #ff0080;
+            box-shadow: 0 0 20px rgba(255, 0, 128, 0.3);
+            background: rgba(0, 0, 0, 0.6);
+        }
+
+        .form-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* 성별 선택 */
+        .gender-selection {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .gender-option {
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(255, 0, 128, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .gender-option:hover {
+            border-color: rgba(255, 0, 128, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .gender-option.selected {
+            border-color: #ff0080;
+            background: rgba(255, 0, 128, 0.1);
+            box-shadow: 0 0 20px rgba(255, 0, 128, 0.3);
+        }
+
+        .gender-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #ff0080;
+        }
+
+        .gender-label {
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* 비밀번호 강도 */
+        .password-strength {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .password-strength-bar {
+            height: 100%;
+            width: 0%;
+            border-radius: 3px;
+            transition: all 0.3s ease;
+        }
+
+        .strength-weak { background: #ff1744; width: 25%; }
+        .strength-medium { background: #ff9800; width: 50%; }
+        .strength-strong { background: #4caf50; width: 75%; }
+        .strength-excellent { background: #00ff7f; width: 100%; }
+
+        /* 체크박스 */
+        .checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 30px;
+            gap: 15px;
+        }
+
+        .custom-checkbox {
+            position: relative;
+            flex-shrink: 0;
+            margin-top: 5px;
+        }
+
+        .custom-checkbox input {
+            opacity: 0;
+            position: absolute;
+        }
+
+        .checkmark {
+            width: 22px;
+            height: 22px;
+            border: 2px solid rgba(255, 0, 128, 0.5);
+            border-radius: 5px;
+            background: transparent;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .custom-checkbox input:checked ~ .checkmark {
+            background: linear-gradient(45deg, #ff0080, #00ffff);
+            border-color: #ff0080;
+        }
+
+        .custom-checkbox input:checked ~ .checkmark::after {
+            content: '\f00c';
+            font-family: 'Font Awesome 5 Free';
+            font-weight: 900;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            color: #000;
+            font-size: 12px;
+        }
+
+        .checkbox-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            cursor: pointer;
+            line-height: 1.4;
+        }
+
+        .checkbox-label a {
+            color: #ff0080;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .checkbox-label a:hover {
+            color: #00ffff;
+        }
+
+        /* 버튼 */
+        .btn {
+            width: 100%;
+            padding: 18px;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #ff0080, #ff8c00);
+            color: white;
+            border: 2px solid transparent;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(255, 0, 128, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        /* 알림 */
+        .alert {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        .alert-danger {
+            background: rgba(255, 23, 68, 0.1);
+            border: 1px solid rgba(255, 23, 68, 0.3);
+            color: #ff1744;
+        }
+
+        .alert-success {
+            background: rgba(0, 255, 127, 0.1);
+            border: 1px solid rgba(0, 255, 127, 0.3);
+            color: #00ff7f;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 로딩 스피너 */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 링크 */
+        .form-links {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .form-links a {
+            color: #ff0080;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .form-links a:hover {
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        .form-links p {
+            margin: 10px 0;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* 반응형 */
+        @media (max-width: 480px) {
+            .register-container {
+                margin: 10px;
+                border-radius: 20px;
+            }
+
+            .register-header {
+                padding: 30px 20px;
+            }
+
+            .register-form {
+                padding: 30px 20px;
+            }
+
+            .register-title {
+                font-size: 2rem;
+            }
+
+            .gender-selection {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="bg-animation"></div>
+
+<div class="register-container">
+    <div class="register-header">
+        <h1 class="register-title">
+            <i class="fas fa-user-plus"></i> REGISTER
+        </h1>
+        <p class="register-subtitle">JOIN THE LEGEND COMMUNITY</p>
+    </div>
+
+    <div class="register-form">
+        <!-- 알림 -->
+        <div id="error-alert" class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span id="error-message"></span>
+        </div>
+
+        <div id="success-alert" class="alert alert-success">
+            <i class="fas fa-check-circle"></i>
+            <span id="success-message"></span>
+        </div>
+
+        <form id="registerForm">
+            <div class="form-group">
+                <label for="username" class="form-label">
+                    <i class="fas fa-user"></i> USERNAME
+                </label>
+                <input type="text"
+                       class="form-input"
+                       id="username"
+                       name="username"
+                       placeholder="Choose your legend name"
+                       required>
+            </div>
+
+            <div class="form-group">
+                <label for="email" class="form-label">
+                    <i class="fas fa-envelope"></i> EMAIL
+                </label>
+                <input type="email"
+                       class="form-input"
+                       id="email"
+                       name="email"
+                       placeholder="Enter your email address"
+                       required>
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">
+                    <i class="fas fa-lock"></i> PASSWORD
+                </label>
+                <input type="password"
+                       class="form-input"
+                       id="password"
+                       name="password"
+                       placeholder="Create a strong password"
+                       required>
+                <div class="password-strength">
+                    <div class="password-strength-bar" id="password-strength-bar"></div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="confirmPassword" class="form-label">
+                    <i class="fas fa-shield-alt"></i> CONFIRM PASSWORD
+                </label>
+                <input type="password"
+                       class="form-input"
+                       id="confirmPassword"
+                       name="confirmPassword"
+                       placeholder="Confirm your password"
+                       required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-venus-mars"></i> GENDER
+                </label>
+                <div class="gender-selection">
+                    <div class="gender-option" data-gender="MALE">
+                        <div class="gender-icon">
+                            <i class="fas fa-mars"></i>
+                        </div>
+                        <div class="gender-label">MALE</div>
+                    </div>
+                    <div class="gender-option" data-gender="FEMALE">
+                        <div class="gender-icon">
+                            <i class="fas fa-venus"></i>
+                        </div>
+                        <div class="gender-label">FEMALE</div>
+                    </div>
+                </div>
+                <input type="hidden" id="gender" name="gender" required>
+            </div>
+
+            <div class="form-group">
+                <label for="age" class="form-label">
+                    <i class="fas fa-calendar-alt"></i> AGE
+                </label>
+                <input type="number"
+                       class="form-input"
+                       id="age"
+                       name="age"
+                       min="18"
+                       max="100"
+                       placeholder="Enter your age (18+)"
+                       required>
+            </div>
+
+            <div class="checkbox-group">
+                <label class="custom-checkbox">
+                    <input type="checkbox" id="agreeTerms" required>
+                    <span class="checkmark"></span>
+                </label>
+                <label for="agreeTerms" class="checkbox-label">
+                    I AGREE TO THE <a href="#">TERMS OF SERVICE</a> AND
+                    <a href="#">PRIVACY POLICY</a>. I'M READY TO BECOME A LEGEND.
+                </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <span id="register-spinner" class="spinner" style="display: none;"></span>
+                <i class="fas fa-rocket"></i> CREATE LEGEND ACCOUNT
+            </button>
+        </form>
+
+        <div class="form-links">
+            <p>ALREADY HAVE AN ACCOUNT?
+                <a href="/login">LOGIN NOW</a>
+            </p>
+            <a href="/">
+                <i class="fas fa-arrow-left"></i> BACK TO HOME
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    let selectedGender = null;
+
+    // 성별 선택
+    document.querySelectorAll('.gender-option').forEach(option => {
+        option.addEventListener('click', function() {
+            document.querySelectorAll('.gender-option').forEach(opt => opt.classList.remove('selected'));
+            this.classList.add('selected');
+            selectedGender = this.dataset.gender;
+            document.getElementById('gender').value = selectedGender;
+        });
+    });
+
+    // 비밀번호 강도 체크
+    document.getElementById('password').addEventListener('input', function() {
+        const password = this.value;
+        const strengthBar = document.getElementById('password-strength-bar');
+
+        strengthBar.className = 'password-strength-bar';
+
+        if (password.length === 0) {
+            strengthBar.style.width = '0%';
+        } else if (password.length < 4) {
+            strengthBar.classList.add('strength-weak');
+        } else if (password.length < 8) {
+            strengthBar.classList.add('strength-medium');
+        } else if (password.length < 12) {
+            strengthBar.classList.add('strength-strong');
+        } else {
+            strengthBar.classList.add('strength-excellent');
+        }
+    });
+
+    // 비밀번호 확인 체크
+    document.getElementById('confirmPassword').addEventListener('input', function() {
+        const password = document.getElementById('password').value;
+        const confirmPassword = this.value;
+
+        if (confirmPassword && password !== confirmPassword) {
+            this.style.borderColor = '#ff1744';
+        } else {
+            this.style.borderColor = 'rgba(255, 0, 128, 0.3)';
+        }
+    });
+
+    // 폼 제출
+    document.getElementById('registerForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        if (!validateForm()) {
+            return;
+        }
+
+        const submitButton = e.target.querySelector('button[type="submit"]');
+        const spinner = document.getElementById('register-spinner');
+        const errorAlert = document.getElementById('error-alert');
+        const successAlert = document.getElementById('success-alert');
+
+        // 로딩 상태
+        submitButton.disabled = true;
+        spinner.style.display = 'inline-block';
+        errorAlert.classList.remove('show');
+        successAlert.classList.remove('show');
+
+        const formData = {
+            username: document.getElementById('username').value,
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value,
+            gender: selectedGender,
+            age: parseInt(document.getElementById('age').value)
+        };
+
+        try {
+            const response = await fetch('/auth/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // 회원가입 성공
+                localStorage.setItem('token', result.token);
+
+                // 성공 메시지 표시
+                document.getElementById('success-message').textContent = 'LEGEND ACCOUNT CREATED! WELCOME TO THE MATRIX...';
+                successAlert.classList.add('show');
+
+                // 2초 후 메인 페이지로 이동
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+
+            } else {
+                // 회원가입 실패
+                document.getElementById('error-message').textContent = result.message.toUpperCase();
+                errorAlert.classList.add('show');
+            }
+
+        } catch (error) {
+            console.error('회원가입 오류:', error);
+            document.getElementById('error-message').textContent = 'CONNECTION ERROR. PLEASE TRY AGAIN.';
+            errorAlert.classList.add('show');
+        } finally {
+            // 로딩 상태 해제
+            submitButton.disabled = false;
+            spinner.style.display = 'none';
+        }
+    });
+
+    function validateForm() {
+        let isValid = true;
+
+        // 성별 체크
+        if (!selectedGender) {
+            document.getElementById('error-message').textContent = 'PLEASE SELECT YOUR GENDER.';
+            document.getElementById('error-alert').classList.add('show');
+            isValid = false;
+        }
+
+        // 비밀번호 확인 체크
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (password !== confirmPassword) {
+            document.getElementById('error-message').textContent = 'PASSWORDS DO NOT MATCH.';
+            document.getElementById('error-alert').classList.add('show');
+            isValid = false;
+        }
+
+        // 약관 동의 체크
+        if (!document.getElementById('agreeTerms').checked) {
+            document.getElementById('error-message').textContent = 'YOU MUST AGREE TO THE TERMS TO BECOME A LEGEND.';
+            document.getElementById('error-alert').classList.add('show');
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
+    // 배경 마우스 효과
+    document.addEventListener('mousemove', (e) => {
+        const bg = document.querySelector('.bg-animation');
+        const x = e.clientX / window.innerWidth;
+        const y = e.clientY / window.innerHeight;
+
+        bg.style.background = `
+                radial-gradient(circle at ${x * 100}% ${y * 100}%,
+                rgba(255, 0, 128, 0.15) 0%,
+                rgba(0, 255, 255, 0.1) 30%,
+                transparent 70%),
+                linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e, #0f3460)
+            `;
+    });
+</script>
+</body>
+</html><label for="confirmPassword" class="form-label">비밀번호 확인 *</label>
+<input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
+<div id="confirm-password-feedback" class="invalid-feedback"></div>
+</div>
+
+<div class="mb-3">
+    <label class="form-label">성별 *</label>
+    <div class="row">
+        <div class="col-6">
+            <div class="gender-option text-center" data-gender="MALE">
+                <div class="fs-1">👨</div>
+                <div>남성</div>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="gender-option text-center" data-gender="FEMALE">
+                <div class="fs-1">👩</div>
+                <div>여성</div>
+            </div>
+        </div>
+    </div>
+    <input type="hidden" id="gender" name="gender" required>
+    <div id="gender-feedback" class="invalid-feedback"></div>
+</div>
+
+<div class="mb-3">
+    <label for="age" class="form-label">나이 *</label>
+    <input type="number" class="form-control" id="age" name="age" min="18" max="100" required>
+    <div class="form-text">18세 이상만 가입 가능합니다</div>
+    <div id="age-feedback" class="invalid-feedback"></div>
+</div>
+
+<div class="mb-3 form-check">
+    <input type="checkbox" class="form-check-input" id="agreeTerms" required>
+    <label class="form-check-label" for="agreeTerms">
+        <a href="#" class="text-decoration-none">이용약관</a> 및
+        <a href="#" class="text-decoration-none">개인정보처리방침</a>에 동의합니다 *
+    </label>
+</div>
+
+<button type="submit" class="btn btn-primary-custom btn-lg mb-3">
+    <span id="register-spinner" class="spinner-border spinner-border-sm d-none me-2"></span>
+    회원가입
+</button>
+</form>
+
+<div class="text-center">
+    <p class="mb-0">이미 계정이 있으신가요?
+        <a href="/login" class="text-decoration-none">로그인</a>
+    </p>
+    <a href="/" class="text-muted text-decoration-none">← 메인으로 돌아가기</a>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let selectedGender = null;
+
+    // 성별 선택
+    document.querySelectorAll('.gender-option').forEach(option => {
+        option.addEventListener('click', function() {
+            document.querySelectorAll('.gender-option').forEach(opt => opt.classList.remove('selected'));
+            this.classList.add('selected');
+            selectedGender = this.dataset.gender;
+            document.getElementById('gender').value = selectedGender;
+        });
+    });
+
+    // 비밀번호 강도 체크
+    document.getElementById('password').addEventListener('input', function() {
+        const password = this.value;
+        const strengthBar = document.getElementById('password-strength');
+
+        if (password.length === 0) {
+            strengthBar.style.width = '0%';
+            strengthBar.style.backgroundColor = '';
+        } else if (password.length < 4) {
+            strengthBar.style.width = '25%';
+            strengthBar.style.backgroundColor = '#dc3545';
+        } else if (password.length < 8) {
+            strengthBar.style.width = '50%';
+            strengthBar.style.backgroundColor = '#ffc107';
+        } else {
+            strengthBar.style.width = '100%';
+            strengthBar.style.backgroundColor = '#198754';
+        }
+    });
+
+    // 비밀번호 확인 체크
+    document.getElementById('confirmPassword').addEventListener('input', function() {
+        const password = document.getElementById('password').value;
+        const confirmPassword = this.value;
+        const feedback = document.getElementById('confirm-password-feedback');
+
+        if (confirmPassword && password !== confirmPassword) {
+            this.classList.add('is-invalid');
+            feedback.textContent = '비밀번호가 일치하지 않습니다.';
+        } else {
+            this.classList.remove('is-invalid');
+        }
+    });
+
+    // 폼 제출
+    document.getElementById('registerForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        if (!validateForm()) {
+            return;
+        }
+
+        const submitButton = e.target.querySelector('button[type="submit"]');
+        const spinner = document.getElementById('register-spinner');
+        const errorAlert = document.getElementById('error-alert');
+        const successAlert = document.getElementById('success-alert');
+
+        // 로딩 상태
+        submitButton.disabled = true;
+        spinner.classList.remove('d-none');
+        errorAlert.classList.add('d-none');
+        successAlert.classList.add('d-none');
+
+        const formData = {
+            username: document.getElementById('username').value,
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value,
+            gender: selectedGender,
+            age: parseInt(document.getElementById('age').value)
+        };
+
+        try {
+            const response = await fetch('/auth/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // 회원가입 성공
+                localStorage.setItem('token', result.token);
+
+                // 성공 메시지 표시
+                document.getElementById('success-message').textContent = result.message;
+                successAlert.classList.remove('d-none');
+
+                // 2초 후 메인 페이지로 이동
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+
+            } else {
+                // 회원가입 실패
+                document.getElementById('error-message').textContent = result.message;
+                errorAlert.classList.remove('d-none');
+            }
+
+        } catch (error) {
+            console.error('회원가입 오류:', error);
+            document.getElementById('error-message').textContent = '회원가입 중 오류가 발생했습니다.';
+            errorAlert.classList.remove('d-none');
+        } finally {
+            // 로딩 상태 해제
+            submitButton.disabled = false;
+            spinner.classList.add('d-none');
+        }
+    });
+
+    function validateForm() {
+        let isValid = true;
+
+        // 성별 체크
+        if (!selectedGender) {
+            document.getElementById('gender-feedback').textContent = '성별을 선택해주세요.';
+            document.getElementById('gender-feedback').style.display = 'block';
+            isValid = false;
+        }
+
+        // 비밀번호 확인 체크
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (password !== confirmPassword) {
+            document.getElementById('confirmPassword').classList.add('is-invalid');
+            isValid = false;
+        }
+
+        // 약관 동의 체크
+        if (!document.getElementById('agreeTerms').checked) {
+            alert('이용약관에 동의해주세요.');
+            isValid = false;
+        }
+
+        return isValid;
+    }
+</script>
+</body>
+</html>
