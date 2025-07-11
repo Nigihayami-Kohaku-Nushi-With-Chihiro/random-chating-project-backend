@@ -469,7 +469,7 @@
         </h1>
         <p class="hero-subtitle">
             새로운 사람들과 랜덤 채팅을 시작하세요.<br>
-            전 세계의 흥미로운 사람들과 만나고 대화해보세요!
+            사람들과 만나고 대화해보세요!
         </p>
 
         <div class="auth-buttons">
@@ -489,10 +489,6 @@
                 <div class="stat-item">
                     <div class="stat-number" th:text="${totalUsers}">1,234</div>
                     <div class="stat-label">Total Users</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number">∞</div>
-                    <div class="stat-label">Connections</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-number">24/7</div>
@@ -579,15 +575,31 @@
 </main>
 
 <script>
-    // 로그아웃 함수
-    function logout() {
+    // 로그아웃 함수 (쿠키 기반)
+    async function logout() {
         if (confirm('정말 로그아웃 하시겠습니까?')) {
-            // 토큰 삭제
-            localStorage.removeItem('token');
-            sessionStorage.removeItem('token');
+            try {
+                const response = await fetch('/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
 
-            // 메인 페이지로 리다이렉트
-            window.location.href = '/';
+                if (response.ok) {
+                    // 로컬스토리지도 정리 (기존 호환성)
+                    localStorage.removeItem('token');
+                    sessionStorage.removeItem('token');
+
+                    // 페이지 새로고침
+                    window.location.href = '/';
+                } else {
+                    alert('로그아웃 처리 중 오류가 발생했습니다.');
+                }
+            } catch (error) {
+                console.error('로그아웃 오류:', error);
+                alert('로그아웃 처리 중 오류가 발생했습니다.');
+            }
         }
     }
 
@@ -625,25 +637,6 @@
             transparent 70%),
             linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e, #0f3460)
         `;
-    });
-
-    // 페이지 로드 시 토큰 확인
-    document.addEventListener('DOMContentLoaded', function() {
-        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-
-        // 토큰이 있는데 비로그인 상태라면 페이지 새로고침
-        if (token && ![[${isAuthenticated}]]) {
-            // 토큰 유효성 검증을 위해 API 호출
-            fetch('/', {
-                headers: {
-                    'Authorization': 'Bearer ' + token
-                }
-            }).then(response => {
-                if (response.ok) {
-                    window.location.reload();
-                }
-            });
-        }
     });
 </script>
 </body>

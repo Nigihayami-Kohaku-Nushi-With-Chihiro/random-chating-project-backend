@@ -171,19 +171,6 @@
             color: rgba(255, 255, 255, 0.5);
         }
 
-        .input-icon {
-            position: absolute;
-            left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #00ffff;
-            font-size: 1.1rem;
-        }
-
-        .form-input.with-icon {
-            padding-left: 50px;
-        }
-
         /* 체크박스 */
         .checkbox-group {
             display: flex;
@@ -488,11 +475,10 @@
             const result = await response.json();
 
             if (result.success) {
-                // 로그인 성공
+                // 로그인 성공 - 쿠키는 서버에서 자동 설정됨
+                // 기존 호환성을 위해 localStorage에도 저장
                 if (document.getElementById('rememberMe').checked) {
                     localStorage.setItem('token', result.token);
-                } else {
-                    sessionStorage.setItem('token', result.token);
                 }
 
                 // 성공 메시지 표시

@@ -1,6 +1,5 @@
 package random.chating.org.randomchatingproject.service;
 
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,6 +15,8 @@ import random.chating.org.randomchatingproject.jwt.JwtProvider;
 import random.chating.org.randomchatingproject.repository.UserRepository;
 import random.chating.org.randomchatingproject.repository.VerifyMailRepository;
 
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.Random;
 
 @Service
@@ -30,12 +31,11 @@ public class AuthService {
     private final MailgunService mailgunService;
     private final VerifyMailRepository verifyMailRepository;
 
-
     /**
      * 회원가입
      */
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public AuthResponse register(RegisterRequest request, HttpServletResponse response) {
         log.info("회원가입 처리 시작: {}", request.getUsername());
 
         // 유효성 검증
@@ -57,30 +57,38 @@ public class AuthService {
                 .email(request.getEmail())
                 .gender(User.Gender.valueOf(request.getGender().toUpperCase()))
                 .age(request.getAge())
-                .role(User.Role.USER) // 기본값: 일반 사용자
+                .role(User.Role.USER)
                 .enabled(true)
                 .accountNonExpired(true)
                 .accountNonLocked(true)
                 .credentialsNonExpired(true)
-                .isVerified(false) // 이메일 인증 필요시 사용
+                .isVerified(false)
                 .build();
 
         User savedUser = userRepository.save(user);
         log.info("사용자 생성 완료: {}", savedUser.getUsername());
 
+        // 이메일 인증 코드 생성 및 발송
         String verifyCode = generateSixDigitCode();
-
         VerifyMails verifyMails = VerifyMails.builder()
                 .email(request.getEmail())
                 .code(verifyCode)
                 .build();
         verifyMailRepository.save(verifyMails);
 
-        mailgunService.sendMail(request.getEmail(), "랜덤채팅", verifyCode);
-
+        try {
+            mailgunService.sendMail(request.getEmail(), "랜덤채팅 인증코드",
+                    "회원가입을 완료하려면 다음 인증코드를 입력해주세요: " + verifyCode);
+        } catch (Exception e) {
+            log.warn("메일 발송 실패: {}", e.getMessage());
+            // 메일 발송 실패해도 회원가입은 계속 진행
+        }
 
         // JWT 토큰 생성
         String token = jwtProvider.generateToken(savedUser);
+
+        // 쿠키에 토큰 설정
+        setAuthCookie(response, token);
 
         // 응답 생성
         UserResponse userResponse = UserResponse.builder()
@@ -102,13 +110,11 @@ public class AuthService {
     }
 
     /**
-     * 로그인 (username 또는 email로 가능)
+     * 로그인
      */
     @Transactional
-    public AuthResponse login(AuthRequest request) {
+    public AuthResponse login(AuthRequest request, HttpServletResponse response) {
         log.info("로그인 처리 시작: {}", request.getUsername());
-
-        log.info("로그인 시도 - username: {}", request.getUsername());
 
         User user = userRepository.findByUsername(request.getUsername())
                 .or(() -> userRepository.findByEmail(request.getUsername()))
@@ -124,8 +130,6 @@ public class AuthService {
             throw new RuntimeException("비밀번호가 일치하지 않습니다");
         }
 
-        log.info("비밀번호 일치 - 로그인 성공");
-
         // 계정 상태 확인
         if (!user.isEnabled()) {
             throw new RuntimeException("비활성화된 계정입니다");
@@ -135,17 +139,14 @@ public class AuthService {
             throw new RuntimeException("잠긴 계정입니다");
         }
 
-        // 이메일 인증 확인 (일단 경고만 출력)
-        if (!user.isVerified()) {
-            log.warn("이메일 인증 미완료 사용자 로그인: username={}", user.getUsername());
-            // 일단 로그인 허용, 나중에 이메일 인증 강제할 수 있음
-        }
-
         // 로그인 성공 처리
         userDetailsService.recordSuccessfulLogin(user.getUsername());
 
         // JWT 토큰 생성
         String token = jwtProvider.generateToken(user);
+
+        // 쿠키에 토큰 설정
+        setAuthCookie(response, token);
 
         // 응답 생성
         UserResponse userResponse = UserResponse.builder()
@@ -166,6 +167,35 @@ public class AuthService {
                 .token(token)
                 .user(userResponse)
                 .build();
+    }
+
+    /**
+     * 로그아웃
+     */
+    public void logout(HttpServletResponse response) {
+        // 쿠키 삭제
+        Cookie cookie = new Cookie("authToken", "");
+        cookie.setHttpOnly(true);
+        cookie.setSecure(false); // 개발환경에서는 false
+        cookie.setPath("/");
+        cookie.setMaxAge(0); // 즉시 만료
+        response.addCookie(cookie);
+
+        log.info("로그아웃 처리 완료");
+    }
+
+    /**
+     * 인증 쿠키 설정
+     */
+    private void setAuthCookie(HttpServletResponse response, String token) {
+        Cookie cookie = new Cookie("authToken", token);
+        cookie.setHttpOnly(true); // XSS 방지
+        cookie.setSecure(false); // 개발환경에서는 false (HTTPS가 아니므로)
+        cookie.setPath("/");
+        cookie.setMaxAge(24 * 60 * 60); // 24시간
+        response.addCookie(cookie);
+
+        log.debug("인증 쿠키 설정 완료");
     }
 
     /**

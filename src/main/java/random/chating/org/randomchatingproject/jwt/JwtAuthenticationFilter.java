@@ -2,14 +2,13 @@ package random.chating.org.randomchatingproject.jwt;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -18,7 +17,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import random.chating.org.randomchatingproject.service.CustomUserDetailsService;
 
 import java.io.IOException;
-import java.util.Collections;
 
 @Slf4j
 @Component
@@ -26,7 +24,7 @@ import java.util.Collections;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
-    private final CustomUserDetailsService customUserDetailsService; // 오타 수정
+    private final CustomUserDetailsService customUserDetailsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -42,78 +40,66 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        log.debug("=== JWT 필터 시작: {} {} ===", method, requestURI);
-
-        // 헤더에서 토큰 추출 (안전하게)
-        String token = extractTokenFromRequest(request);
-
-        if (!StringUtils.hasText(token)) {
-            log.debug("토큰 없음 - 익명 사용자로 설정");
-            // 익명 사용자로 인증 설정
-            setAnonymousAuthentication();
-            filterChain.doFilter(request, response);
-            return;
-        }
-
-        log.debug("토큰 발견됨");
+        log.info("=== JWT 필터 처리: {} {} ===", method, requestURI);
 
         try {
-            // 토큰 검증
-            if (!jwtProvider.validateToken(token)) {
-                log.warn("토큰 검증 실패 - 익명 사용자로 설정");
-                setAnonymousAuthentication();
-                filterChain.doFilter(request, response);
-                return;
+            // 토큰 추출 (헤더 우선, 그 다음 쿠키)
+            String token = extractTokenFromRequest(request);
+            log.info("추출된 토큰: {}", token != null ? "있음" : "없음");
+
+            if (StringUtils.hasText(token)) {
+                log.info("토큰 검증 시작");
+                if (jwtProvider.validateToken(token)) {
+                    String username = jwtProvider.getUsername(token);
+                    log.info("토큰에서 사용자명 추출: {}", username);
+
+                    UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
+                    log.info("사용자 정보 로드 완료: {}", userDetails.getUsername());
+
+                    Authentication authentication = new UsernamePasswordAuthenticationToken(
+                            userDetails, null, userDetails.getAuthorities()
+                    );
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                    log.info("SecurityContext에 인증 정보 설정 완료: {}", username);
+                } else {
+                    log.warn("토큰 검증 실패");
+                }
+            } else {
+                log.info("토큰이 없어서 인증 정보 설정하지 않음");
             }
-
-            // 토큰에서 사용자명 추출
-            String username = jwtProvider.getUsername(token);
-            log.debug("토큰에서 사용자명 추출: {}", username);
-
-            // UserDetailsService로 사용자 정보 조회
-            UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
-            log.debug("사용자 정보 로드 완료: {}", userDetails.getUsername());
-
-            // Spring Security 컨텍스트에 인증 정보 설정
-            Authentication authentication = new UsernamePasswordAuthenticationToken(
-                    userDetails, null, userDetails.getAuthorities()
-            );
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-
-            log.debug("Spring Security 인증 설정 완료: {}", username);
-
         } catch (Exception e) {
-            log.error("JWT 인증 처리 중 오류: {} - 익명 사용자로 설정", e.getMessage());
-            setAnonymousAuthentication();
+            log.error("JWT 인증 처리 중 오류: {}", e.getMessage(), e);
+            SecurityContextHolder.clearContext();
         }
 
-        log.debug("=== JWT 필터 종료 ===");
         filterChain.doFilter(request, response);
     }
 
     /**
-     * 익명 사용자 인증 설정
-     */
-    private void setAnonymousAuthentication() {
-        Authentication anonymousAuth = new AnonymousAuthenticationToken(
-                "anonymous",
-                "anonymous",
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_ANONYMOUS"))
-        );
-        SecurityContextHolder.getContext().setAuthentication(anonymousAuth);
-        log.debug("익명 사용자 인증 설정 완료");
-    }
-
-    /**
-     * 요청에서 JWT 토큰 추출 (안전하게)
+     * 요청에서 JWT 토큰 추출 (헤더 우선, 쿠키 백업)
      */
     private String extractTokenFromRequest(HttpServletRequest request) {
+        // 1순위: Authorization 헤더
         String bearerToken = request.getHeader("Authorization");
-
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7); // "Bearer " 제거
+            log.info("Authorization 헤더에서 토큰 추출");
+            return bearerToken.substring(7);
         }
 
+        // 2순위: 쿠키
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                log.debug("쿠키 확인: {} = {}", cookie.getName(), cookie.getValue());
+                if ("authToken".equals(cookie.getName())) {
+                    log.info("authToken 쿠키에서 토큰 추출");
+                    return cookie.getValue();
+                }
+            }
+        }
+
+        log.info("토큰을 찾을 수 없음");
         return null;
     }
 
@@ -137,7 +123,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return true;
         }
 
-        // 인증 관련 API (로그인, 회원가입) - 중요!
+        // 인증 관련 API (로그인, 회원가입)
         if (requestURI.startsWith("/auth/")) {
             return true;
         }

@@ -669,7 +669,8 @@
             const result = await response.json();
 
             if (result.success) {
-                // 회원가입 성공
+                // 회원가입 성공 - 쿠키는 서버에서 자동 설정됨
+                // 기존 호환성을 위해 localStorage에도 저장
                 localStorage.setItem('token', result.token);
 
                 // 성공 메시지 표시

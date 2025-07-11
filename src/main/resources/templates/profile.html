@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROFILE - RANDOM CHAT</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* 배경 애니메이션 */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e, #0f3460);
+            background-size: 400% 400%;
+            animation: gradientShift 20s ease infinite;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 50%, rgba(0, 255, 255, 0.1) 0%, transparent 70%);
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* 헤더 */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+            padding: 20px 0;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'Orbitron', monospace;
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: #00ffff;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            color: #00ffff;
+            background: rgba(0, 255, 255, 0.1);
+        }
+
+        .nav-link.active {
+            color: #00ffff;
+            background: rgba(0, 255, 255, 0.2);
+        }
+
+        /* 메인 컨테이너 */
+        .main-container {
+            padding: 120px 20px 40px;
+            min-height: 100vh;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* 프로필 헤더 */
+        .profile-header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .profile-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 3rem;
+            font-weight: 900;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #00ffff, #ff0080);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: textGlow 3s ease infinite;
+        }
+
+        @keyframes textGlow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .profile-subtitle {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1.2rem;
+        }
+
+        /* 프로필 아바타 */
+        .avatar-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .avatar-container {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
+        .avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #00ffff, #ff0080, #ffff00);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            color: #000;
+            font-weight: 900;
+            border: 3px solid rgba(0, 255, 255, 0.5);
+            animation: avatarGlow 2s ease infinite alternate;
+        }
+
+        @keyframes avatarGlow {
+            0% { box-shadow: 0 0 20px rgba(0, 255, 255, 0.5); }
+            100% { box-shadow: 0 0 40px rgba(0, 255, 255, 0.8); }
+        }
+
+        .avatar-edit {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background: #ff0080;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .avatar-edit:hover {
+            transform: scale(1.1);
+        }
+
+        /* 카드 스타일 */
+        .profile-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .profile-card::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #00ffff, #ff0080, #ffff00, #00ffff);
+            background-size: 400% 400%;
+            border-radius: 20px;
+            z-index: -1;
+            opacity: 0;
+            animation: borderGlow 4s ease infinite;
+            transition: opacity 0.3s ease;
+        }
+
+        .profile-card:hover::before {
+            opacity: 1;
+        }
+
+        @keyframes borderGlow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #00ffff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* 폼 스타일 */
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: #00ffff;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 1rem;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+            background: rgba(0, 0, 0, 0.6);
+        }
+
+        .form-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* 관심사 태그 */
+        .interests-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .interest-tag {
+            background: rgba(0, 255, 255, 0.1);
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            border-radius: 25px;
+            padding: 10px 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .interest-tag.selected {
+            background: linear-gradient(45deg, #00ffff, #0080ff);
+            color: #000;
+            border-color: #00ffff;
+        }
+
+        .interest-tag:hover {
+            border-color: #00ffff;
+            transform: translateY(-2px);
+        }
+
+        /* 매칭 설정 */
+        .preference-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .preference-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .preference-card:hover {
+            border-color: #00ffff;
+            transform: translateY(-5px);
+        }
+
+        /* 버튼 스타일 */
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #00ffff, #0080ff);
+            color: #000;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 255, 255, 0.3);
+        }
+
+        /* 알림 */
+        .alert {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .alert.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        .alert-success {
+            background: rgba(0, 255, 127, 0.1);
+            border: 1px solid rgba(0, 255, 127, 0.3);
+            color: #00ff7f;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 두 열 레이아웃 */
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        /* 반응형 */
+        @media (max-width: 768px) {
+            .two-column {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-links {
+                gap: 10px;
+            }
+
+            .nav-link {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
+
+            .profile-title {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="bg-animation"></div>
+
+<!-- 헤더 -->
+<header class="header">
+    <div class="nav-container">
+        <a href="/" class="logo">
+            <i class="fas fa-bolt"></i> RANDOM CHAT
+        </a>
+        <div class="nav-links">
+            <a href="/profile" class="nav-link active">프로필</a>
+            <a href="/settings" class="nav-link">계정 설정</a>
+            <a href="/" class="nav-link">메인으로</a>
+        </div>
+    </div>
+</header>
+
+<main class="main-container">
+    <!-- 프로필 헤더 -->
+    <div class="profile-header">
+        <h1 class="profile-title">
+            <i class="fas fa-user-circle"></i> MY PROFILE
+        </h1>
+        <p class="profile-subtitle">나를 표현하고 새로운 만남을 준비하세요</p>
+    </div>
+
+    <!-- 아바타 섹션 -->
+    <div class="avatar-section">
+        <div class="avatar-container">
+            <div class="avatar" th:text="${username?.substring(0,1)?.toUpperCase()}">U</div>
+            <button class="avatar-edit" onclick="changeAvatar()">
+                <i class="fas fa-camera"></i>
+            </button>
+        </div>
+        <h2 th:text="${username}">USERNAME</h2>
+    </div>
+
+    <!-- 알림 -->
+    <div id="success-alert" class="alert alert-success">
+        <i class="fas fa-check-circle"></i>
+        <span id="success-message"></span>
+    </div>
+
+    <!-- 기본 정보 -->
+    <div class="profile-card">
+        <h3 class="card-title">
+            <i class="fas fa-id-card"></i> 기본 정보
+        </h3>
+        <form id="profileForm">
+            <div class="two-column">
+                <div class="form-group">
+                    <label for="nickname" class="form-label">닉네임</label>
+                    <input type="text" class="form-input" id="nickname" th:value="${username}" placeholder="표시될 닉네임">
+                </div>
+                <div class="form-group">
+                    <label for="age" class="form-label">나이</label>
+                    <input type="number" class="form-input" id="age" th:value="${age}" min="18" max="100">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="bio" class="form-label">자기소개</label>
+                <textarea class="form-input" id="bio" rows="4" placeholder="자신을 간단히 소개해보세요... (최대 200자)"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="location" class="form-label">지역 (선택)</label>
+                <input type="text" class="form-input" id="location" placeholder="예: 서울, 부산, 대구...">
+            </div>
+        </form>
+    </div>
+
+    <!-- 관심사 -->
+    <div class="profile-card">
+        <h3 class="card-title">
+            <i class="fas fa-heart"></i> 관심사 (최대 5개)
+        </h3>
+        <div class="interests-grid">
+            <div class="interest-tag" onclick="toggleInterest(this)">게임</div>
+            <div class="interest-tag" onclick="toggleInterest(this)">영화</div>
+            <div class="interest-tag" onclick="toggleInterest(this)">음악</div>
+            <div class="interest-tag" onclick="toggleInterest(this)">운동</div>
+            <div class="interest-tag" onclick="toggleInterest(this)">요리</div>
+            <div class="interest-tag" onclick="toggleInterest(this)">여행</div>
+            <div class="interest-tag" onclick="toggleInterest(this)">독서</div>
+            <div class="interest-tag" onclick="toggleInterest(this)">사진</div>
+            <div class="interest-tag" onclick="toggleInterest(this)">드라마</div>
+            <div class="interest-tag" onclick="toggleInterest(this)">카페</div>
+            <div class="interest-tag" onclick="toggleInterest(this)">쇼핑</div>
+            <div class="interest-tag" onclick="toggleInterest(this)">반려동물</div>
+        </div>
+    </div>
+
+    <!-- 매칭 선호도 -->
+    <div class="profile-card">
+        <h3 class="card-title">
+            <i class="fas fa-users"></i> 매칭 선호도
+        </h3>
+        <div class="preference-grid">
+            <div class="preference-card">
+                <h4 style="color: #00ffff; margin-bottom: 10px;">선호 나이대</h4>
+                <input type="range" class="form-input" id="ageRange" min="18" max="100" value="25" style="margin-bottom: 10px;">
+                <div id="ageDisplay" style="color: #00ffff;">18 - 25세</div>
+            </div>
+            <div class="preference-card">
+                <h4 style="color: #00ffff; margin-bottom: 10px;">채팅 스타일</h4>
+                <select class="form-input">
+                    <option>가벼운 대화</option>
+                    <option>진지한 대화</option>
+                    <option>상관없음</option>
+                </select>
+            </div>
+            <div class="preference-card">
+                <h4 style="color: #00ffff; margin-bottom: 10px;">만남 목적</h4>
+                <select class="form-input">
+                    <option>친구 만들기</option>
+                    <option>연애</option>
+                    <option>그냥 대화</option>
+                    <option>상관없음</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- 저장 버튼 -->
+    <div style="text-align: center;">
+        <button class="btn btn-primary" onclick="saveProfile()">
+            <i class="fas fa-save"></i> 프로필 저장
+        </button>
+    </div>
+</main>
+
+<script>
+    let selectedInterests = [];
+
+    // 관심사 토글
+    function toggleInterest(element) {
+        if (element.classList.contains('selected')) {
+            element.classList.remove('selected');
+            selectedInterests = selectedInterests.filter(interest => interest !== element.textContent);
+        } else {
+            if (selectedInterests.length < 5) {
+                element.classList.add('selected');
+                selectedInterests.push(element.textContent);
+            } else {
+                alert('최대 5개까지만 선택할 수 있습니다.');
+            }
+        }
+    }
+
+    // 아바타 변경
+    function changeAvatar() {
+        alert('아바타 변경 기능을 준비 중입니다!');
+    }
+
+    // 나이 범위 슬라이더
+    document.getElementById('ageRange').addEventListener('input', function() {
+        const value = this.value;
+        document.getElementById('ageDisplay').textContent = `18 - ${value}세`;
+    });
+
+    // 프로필 저장
+    function saveProfile() {
+        // TODO: 프로필 저장 API 호출
+        showAlert('프로필이 성공적으로 저장되었습니다!');
+    }
+
+    // 알림 표시
+    function showAlert(message) {
+        const alertElement = document.getElementById('success-alert');
+        const messageElement = document.getElementById('success-message');
+
+        messageElement.textContent = message;
+        alertElement.classList.add('show');
+
+        setTimeout(() => {
+            alertElement.classList.remove('show');
+        }, 3000);
+    }
+</script>
+</body>
+</html>
