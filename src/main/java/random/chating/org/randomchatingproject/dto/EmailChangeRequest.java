@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UsernameChangeRequest {
-    private String newUsername;
-    private String password; // 확인용
+public class EmailChangeRequest {
+    private String newEmail;
+    private String password; // 보안을 위한 비밀번호 확인
 }

@@ -10,9 +10,13 @@ import random.chating.org.randomchatingproject.dto.AuthResponse;
 import random.chating.org.randomchatingproject.dto.RegisterRequest;
 import random.chating.org.randomchatingproject.dto.UserResponse;
 import random.chating.org.randomchatingproject.entity.User;
+import random.chating.org.randomchatingproject.entity.UserProfile;
+import random.chating.org.randomchatingproject.entity.UserSettings;
 import random.chating.org.randomchatingproject.entity.VerifyMails;
 import random.chating.org.randomchatingproject.jwt.JwtProvider;
 import random.chating.org.randomchatingproject.repository.UserRepository;
+import random.chating.org.randomchatingproject.repository.UserProfileRepository;
+import random.chating.org.randomchatingproject.repository.UserSettingsRepository;
 import random.chating.org.randomchatingproject.repository.VerifyMailRepository;
 
 import jakarta.servlet.http.Cookie;
@@ -24,7 +28,10 @@ import java.util.Random;
 @Slf4j
 public class AuthService {
 
+    // 의존성 주입
     private final UserRepository userRepository;
+    private final UserProfileRepository userProfileRepository;
+    private final UserSettingsRepository userSettingsRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
     private final CustomUserDetailsService userDetailsService;
@@ -32,7 +39,7 @@ public class AuthService {
     private final VerifyMailRepository verifyMailRepository;
 
     /**
-     * 회원가입
+     * 회원가입 - 3개 테이블 모두 생성
      */
     @Transactional
     public AuthResponse register(RegisterRequest request, HttpServletResponse response) {
@@ -50,63 +57,115 @@ public class AuthService {
             throw new RuntimeException("이미 존재하는 이메일입니다");
         }
 
-        // 사용자 생성
-        User user = User.builder()
-                .username(request.getUsername())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .email(request.getEmail())
-                .gender(User.Gender.valueOf(request.getGender().toUpperCase()))
-                .age(request.getAge())
-                .role(User.Role.USER)
-                .enabled(true)
-                .accountNonExpired(true)
-                .accountNonLocked(true)
-                .credentialsNonExpired(true)
-                .isVerified(false)
-                .build();
-
-        User savedUser = userRepository.save(user);
-        log.info("사용자 생성 완료: {}", savedUser.getUsername());
-
-        // 이메일 인증 코드 생성 및 발송
-        String verifyCode = generateSixDigitCode();
-        VerifyMails verifyMails = VerifyMails.builder()
-                .email(request.getEmail())
-                .code(verifyCode)
-                .build();
-        verifyMailRepository.save(verifyMails);
-
         try {
-            mailgunService.sendMail(request.getEmail(), "랜덤채팅 인증코드",
-                    "회원가입을 완료하려면 다음 인증코드를 입력해주세요: " + verifyCode);
+            // 1️⃣ User 테이블 생성 (기본 계정 정보)
+            User user = User.builder()
+                    .username(request.getUsername())
+                    .password(passwordEncoder.encode(request.getPassword()))
+                    .email(request.getEmail())
+                    .gender(User.Gender.valueOf(request.getGender().toUpperCase()))
+                    .age(request.getAge())
+                    .role(User.Role.USER)
+                    .enabled(true)
+                    .accountNonExpired(true)
+                    .accountNonLocked(true)
+                    .credentialsNonExpired(true)
+                    .isVerified(false)
+                    .build();
+
+            User savedUser = userRepository.save(user);
+            log.info("✅ User 생성 완료: userId={}", savedUser.getId());
+
+            // 2️⃣ UserProfile 테이블 생성 (확장 프로필 정보)
+            UserProfile defaultProfile = UserProfile.builder()
+                    .userId(savedUser.getId()) // 🔗 User와 연결되는 외래키
+                    .bio(null) // 자기소개 (나중에 입력)
+                    .location(null) // 지역 (나중에 입력)
+                    .interests(null) // 관심사 (나중에 선택)
+                    .profileImageUrl(null) // 프로필 이미지 (나중에 업로드)
+                    // 매칭 선호도 기본값
+                    .preferredMinAge(18) // 최소 연령 18세
+                    .preferredMaxAge(calculatePreferredMaxAge(request.getAge())) // 스마트 계산
+                    .chatStyle("any") // 채팅 스타일: "casual", "serious", "any"
+                    .meetingPurpose("friendship") // 만남 목적: "friendship", "dating", "chat", "any"
+                    // 통계 초기값
+                    .profileViews(0) // 프로필 조회수
+                    .totalChats(0) // 총 채팅 수
+                    .build();
+
+            userProfileRepository.save(defaultProfile);
+            log.info("✅ UserProfile 생성 완료: userId={}", savedUser.getId());
+
+            // 3️⃣ UserSettings 테이블 생성 (사용자 설정)
+            UserSettings defaultSettings = UserSettings.builder()
+                    .userId(savedUser.getId()) // 🔗 User와 연결되는 외래키
+                    // 알림 설정 기본값
+                    .emailNotifications(true) // 이메일 알림 ON
+                    .pushNotifications(false) // 푸시 알림 OFF (브라우저 권한 필요)
+                    .marketingNotifications(false) // 마케팅 알림 OFF (사용자가 직접 선택하도록)
+                    // 개인정보 보호 설정 기본값
+                    .showOnlineStatus(true) // 온라인 상태 표시 ON
+                    .profileVisible(true) // 프로필 공개 ON
+                    // 매칭 설정 기본값
+                    .autoMatching(true) // 자동 매칭 ON
+                    .sameRegionOnly(false) // 같은 지역만 매칭 OFF
+                    // 보안 설정 기본값
+                    .blockInappropriateContent(true) // 부적절한 콘텐츠 차단 ON
+                    .autoReportSpam(true) // 스팸 자동 신고 ON
+                    .build();
+
+            userSettingsRepository.save(defaultSettings);
+            log.info("✅ UserSettings 생성 완료: userId={}", savedUser.getId());
+
+            // 4️⃣ 이메일 인증 코드 생성 및 발송
+            String verifyCode = generateSixDigitCode();
+            VerifyMails verifyMails = VerifyMails.builder()
+                    .email(request.getEmail())
+                    .code(verifyCode)
+                    .build();
+            verifyMailRepository.save(verifyMails);
+
+            try {
+                mailgunService.sendMail(request.getEmail(), "🎉 랜덤채팅 회원가입 인증",
+                        "회원가입을 환영합니다! 🎊\n\n" +
+                                "계정을 활성화하려면 다음 인증코드를 입력해주세요:\n\n" +
+                                "📱 인증코드: " + verifyCode + "\n\n" +
+                                "랜덤채팅에서 새로운 만남을 시작해보세요!");
+            } catch (Exception e) {
+                log.warn("메일 발송 실패: {}", e.getMessage());
+                // 메일 발송 실패해도 회원가입은 계속 진행
+            }
+
+            // 5️⃣ JWT 토큰 생성
+            String token = jwtProvider.generateToken(savedUser);
+
+            // 6️⃣ 쿠키에 토큰 설정
+            setAuthCookie(response, token);
+
+            // 7️⃣ 응답 생성
+            UserResponse userResponse = UserResponse.builder()
+                    .id(savedUser.getId())
+                    .username(savedUser.getUsername())
+                    .email(savedUser.getEmail())
+                    .gender(savedUser.getGender().name())
+                    .age(savedUser.getAge())
+                    .role(savedUser.getRole().name())
+                    .isAuthenticated(true)
+                    .build();
+
+            log.info("🎉 회원가입 완료: userId={}, username={}", savedUser.getId(), savedUser.getUsername());
+
+            return AuthResponse.builder()
+                    .success(true)
+                    .message("회원가입이 완료되었습니다! 프로필을 완성해보세요.")
+                    .token(token)
+                    .user(userResponse)
+                    .build();
+
         } catch (Exception e) {
-            log.warn("메일 발송 실패: {}", e.getMessage());
-            // 메일 발송 실패해도 회원가입은 계속 진행
+            log.error("회원가입 실패: {}", e.getMessage(), e);
+            throw new RuntimeException("회원가입 처리 중 오류가 발생했습니다: " + e.getMessage());
         }
-
-        // JWT 토큰 생성
-        String token = jwtProvider.generateToken(savedUser);
-
-        // 쿠키에 토큰 설정
-        setAuthCookie(response, token);
-
-        // 응답 생성
-        UserResponse userResponse = UserResponse.builder()
-                .id(savedUser.getId())
-                .username(savedUser.getUsername())
-                .email(savedUser.getEmail())
-                .gender(savedUser.getGender().name())
-                .age(savedUser.getAge())
-                .role(savedUser.getRole().name())
-                .isAuthenticated(true)
-                .build();
-
-        return AuthResponse.builder()
-                .success(true)
-                .message("회원가입이 완료되었습니다")
-                .token(token)
-                .user(userResponse)
-                .build();
     }
 
     /**
@@ -199,43 +258,18 @@ public class AuthService {
     }
 
     /**
-     * 비밀번호 변경
+     * 스마트 나이 기반 선호 연령 계산
      */
-    @Transactional
-    public void resetPassword(Long userId, String currentPassword, String newPassword) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("존재하지 않는 사용자입니다"));
-
-        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            throw new RuntimeException("현재 비밀번호가 일치하지 않습니다");
+    private int calculatePreferredMaxAge(int userAge) {
+        if (userAge <= 25) {
+            return userAge + 10; // 젊은 사용자는 넓은 범위
+        } else if (userAge <= 35) {
+            return userAge + 8;  // 중간 연령대는 조금 좁게
+        } else if (userAge <= 50) {
+            return userAge + 5;  // 중년층은 비슷한 연령대
+        } else {
+            return Math.min(userAge + 3, 100); // 시니어는 좁은 범위
         }
-
-        user.setPassword(passwordEncoder.encode(newPassword));
-        userRepository.save(user);
-
-        log.info("비밀번호 변경 완료: {}", user.getUsername());
-    }
-
-    /**
-     * 사용자명 변경
-     */
-    @Transactional
-    public void updateUsername(Long userId, String newUsername, String password) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("존재하지 않는 사용자입니다"));
-
-        if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new RuntimeException("비밀번호가 일치하지 않습니다");
-        }
-
-        if (userRepository.existsByUsername(newUsername)) {
-            throw new RuntimeException("이미 존재하는 사용자명입니다");
-        }
-
-        user.setUsername(newUsername);
-        userRepository.save(user);
-
-        log.info("사용자명 변경 완료: {} -> {}", user.getUsername(), newUsername);
     }
 
     /**

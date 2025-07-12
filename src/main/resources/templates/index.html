@@ -575,7 +575,7 @@
 </main>
 
 <script>
-    // 로그아웃 함수 (쿠키 기반)
+    // 로그아웃 함수
     async function logout() {
         if (confirm('정말 로그아웃 하시겠습니까?')) {
             try {
@@ -587,11 +587,8 @@
                 });
 
                 if (response.ok) {
-                    // 로컬스토리지도 정리 (기존 호환성)
                     localStorage.removeItem('token');
                     sessionStorage.removeItem('token');
-
-                    // 페이지 새로고침
                     window.location.href = '/';
                 } else {
                     alert('로그아웃 처리 중 오류가 발생했습니다.');
@@ -605,13 +602,12 @@
 
     // 랜덤 채팅 시작
     function startRandomChat() {
-        // TODO: 매칭 시스템으로 연결
-        alert('매칭 시스템을 준비 중입니다!');
+        alert('매칭 시스템을 준비 중입니다!\n곧 랜덤 채팅 기능이 추가될 예정입니다.');
     }
 
-    // 프로필 보기
+    // 프로필 보기 - 프로필 페이지로 이동
     function showProfile() {
-        alert('프로필 페이지를 준비 중입니다!');
+        window.location.href = '/profile';
     }
 
     // 채팅 기록 보기
@@ -619,9 +615,9 @@
         alert('채팅 기록 페이지를 준비 중입니다!');
     }
 
-    // 설정 페이지
+    // 설정 페이지로 이동
     function showSettings() {
-        alert('설정 페이지를 준비 중입니다!');
+        window.location.href = '/settings';
     }
 
     // 배경 마우스 효과
@@ -631,12 +627,12 @@
         const y = e.clientY / window.innerHeight;
 
         bg.style.background = `
-            radial-gradient(circle at ${x * 100}% ${y * 100}%,
-            rgba(0, 255, 255, 0.15) 0%,
-            rgba(255, 0, 128, 0.1) 30%,
-            transparent 70%),
-            linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e, #0f3460)
-        `;
+        radial-gradient(circle at ${x * 100}% ${y * 100}%,
+        rgba(0, 255, 255, 0.15) 0%,
+        rgba(255, 0, 128, 0.1) 30%,
+        transparent 70%),
+        linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e, #0f3460)
+    `;
     });
 </script>
 </body>

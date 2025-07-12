@@ -1,3 +1,5 @@
+// SecurityConfig.java 전체 코드 (기존 파일 완전 교체)
+
 package random.chating.org.randomchatingproject.config;
 
 import lombok.RequiredArgsConstructor;
@@ -38,7 +40,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authz -> {
                     log.info("권한 설정 적용 중...");
                     authz
-                            // 정적 리소스
+                            // 정적 리소스 - 모든 사용자 접근 가능
                             .requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
 
                             // 인증 없이 접근 가능한 페이지
@@ -47,11 +49,26 @@ public class SecurityConfig {
                             // 인증 없이 접근 가능한 API
                             .requestMatchers("/auth/**").permitAll()
 
-                            // WebSocket
+                            // 이메일 인증 관련
+                            .requestMatchers("/user/verify/**").permitAll()
+
+                            // WebSocket 연결
                             .requestMatchers("/ws/**").permitAll()
 
+                            // 프로필 및 설정 페이지 - 로그인 필요
+                            .requestMatchers("/profile", "/settings").hasAnyRole("USER", "ADMIN")
+
+                            // 프로필 관련 API - 로그인 필요
+                            .requestMatchers("/api/profile/**").hasAnyRole("USER", "ADMIN")
+
+                            // 설정 관련 API - 로그인 필요
+                            .requestMatchers("/api/settings/**").hasAnyRole("USER", "ADMIN")
+
+                            // 채팅 관련 - 로그인 필요 (추후 구현)
+                            .requestMatchers("/chat/**", "/matching/**").hasAnyRole("USER", "ADMIN")
+
                             // 일반 사용자 권한 필요
-                            .requestMatchers("/chat/**", "/users/**").hasAnyRole("USER", "ADMIN")
+                            .requestMatchers("/users/**").hasAnyRole("USER", "ADMIN")
 
                             // 관리자 권한 필요
                             .requestMatchers("/admin/**").hasRole("ADMIN")
