@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WAITING - RANDOM CHAT</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 배경 애니메이션 */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e, #0f3460);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 50% 50%, rgba(0, 255, 255, 0.15) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        /* 심플한 매칭 애니메이션 */
+        .matching-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 200px;
+        }
+
+        .loading-circle {
+            width: 100%;
+            height: 100%;
+            border: 3px solid rgba(0, 255, 255, 0.2);
+            border-top: 3px solid #00ffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .user-avatar {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(45deg, #00ffff, #0080ff);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        /* 상태 패널 */
+        .status-panel {
+            position: fixed;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 20px;
+            padding: 30px 40px;
+            text-align: center;
+            min-width: 400px;
+        }
+
+        .status-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 2rem;
+            font-weight: 900;
+            color: #00ffff;
+            margin-bottom: 15px;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+        }
+
+        .status-message {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 20px;
+        }
+
+        .waiting-dots {
+            display: inline-block;
+            animation: waitingDots 1.5s ease infinite;
+        }
+
+        @keyframes waitingDots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+
+        .waiting-dots::after {
+            content: '';
+            animation: waitingDots 1.5s ease infinite;
+        }
+
+        /* 통계 */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: #00ffff;
+            margin-bottom: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.7);
+            text-transform: uppercase;
+        }
+
+        /* 버튼 */
+        .action-buttons {
+            position: fixed;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 15px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-cancel {
+            background: linear-gradient(45deg, #00ffff, #0080ff);
+            color: #000;
+            border: 2px solid transparent;
+        }
+
+        .btn-cancel:hover {
+            background: linear-gradient(45deg, #0080ff, #00ffff);
+            box-shadow: 0 10px 25px rgba(0, 255, 255, 0.3);
+            transform: translateY(-3px);
+        }
+
+        /* 알림 */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 255, 127, 0.1);
+            border: 1px solid rgba(0, 255, 127, 0.3);
+            color: #00ff7f;
+            padding: 15px 20px;
+            border-radius: 10px;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        .notification.error {
+            background: rgba(255, 68, 68, 0.1);
+            border-color: rgba(255, 68, 68, 0.3);
+            color: #ff4444;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* 매칭 성공 오버레이 */
+        .match-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .match-success {
+            text-align: center;
+            animation: matchSuccess 0.5s ease;
+        }
+
+        .match-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 3rem;
+            font-weight: 900;
+            background: linear-gradient(45deg, #00ff7f, #00ffff);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: textGlow 2s ease infinite;
+            margin-bottom: 20px;
+        }
+
+        .match-message {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 30px;
+        }
+
+        @keyframes matchSuccess {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes textGlow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        /* 반응형 */
+        @media (max-width: 768px) {
+            .matching-container {
+                width: 150px;
+                height: 150px;
+            }
+
+            .user-avatar {
+                width: 50px;
+                height: 50px;
+                font-size: 1.2rem;
+            }
+
+            .status-panel {
+                min-width: 300px;
+                padding: 20px 25px;
+            }
+
+            .status-title {
+                font-size: 1.5rem;
+            }
+
+            .stats-container {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="bg-animation"></div>
+
+<!-- 상태 패널 -->
+<div class="status-panel">
+    <h1 class="status-title">
+        <i class="fas fa-search"></i> SEARCHING
+    </h1>
+    <p class="status-message" id="statusMessage">
+        매칭 상대를 찾고 있습니다<span class="waiting-dots"></span>
+    </p>
+
+    <!-- 통계 -->
+    <div class="stats-container">
+        <div class="stat-item">
+            <div class="stat-number" id="maleCount" th:text="${maleWaiting}">0</div>
+            <div class="stat-label">Male Waiting</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number" id="femaleCount" th:text="${femaleWaiting}">0</div>
+            <div class="stat-label">Female Waiting</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number" id="activeCount" th:text="${activeChats}">0</div>
+            <div class="stat-label">Active Chats</div>
+        </div>
+    </div>
+</div>
+
+<!-- 액션 버튼들 -->
+<div class="action-buttons">
+    <button class="btn btn-cancel" onclick="goHomeAndCancel()" id="homeBtn">
+        <i class="fas fa-home"></i> HOME
+    </button>
+</div>
+
+<!-- 알림 -->
+<div class="notification" id="notification">
+    <span id="notificationMessage"></span>
+</div>
+
+<!-- 매칭 성공 오버레이 -->
+<div class="match-overlay" id="matchOverlay">
+    <div class="match-success">
+        <h1 class="match-title">
+            <i class="fas fa-heart"></i> MATCH FOUND!
+        </h1>
+        <p class="match-message" id="matchMessage">
+            매칭되었습니다! 채팅을 시작하세요.
+        </p>
+        <button class="btn btn-primary" onclick="startChat()" id="startChatBtn"
+                style="background: linear-gradient(45deg, #00ff7f, #00ffff); color: #000; padding: 20px 40px; font-size: 1.2rem;">
+            <i class="fas fa-comments"></i> START CHATTING
+        </button>
+    </div>
+</div>
+
+<script>
+    // 전역 변수
+    let stompClient = null;
+    let isConnected = false;
+    let isWaiting = false;
+    let matchedRoomId = null;
+    let userId = /*[[${user.id}]]*/ 0;
+    let username = /*[[${username}]]*/ 'User';
+    let userGender = /*[[${gender}]]*/ 'MALE';
+
+    // 페이지 로드 시 초기화
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('매칭 대기 페이지 로드:', {userId, username, userGender});
+
+        // WebSocket 연결
+        connectWebSocket();
+
+        // 백업용 폴링 (30초마다)
+        setInterval(updateStats, 30000);
+
+        // 자동 매칭 시작
+        const isAlreadyWaiting = /*[[${isWaiting}]]*/ false;
+        if (!isAlreadyWaiting) {
+            setTimeout(startMatching, 1000);
+        } else {
+            isWaiting = true;
+            updateUI();
+        }
+    });
+
+    // WebSocket 연결
+    function connectWebSocket() {
+        console.log('WebSocket 연결 시도...');
+
+        const socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+        stompClient.debug = null;
+
+        stompClient.connect({}, function(frame) {
+            console.log('WebSocket 연결 성공:', frame);
+            isConnected = true;
+
+            // 매칭 알림 구독
+            stompClient.subscribe('/user/queue/matching', function(message) {
+                handleMatchingMessage(JSON.parse(message.body));
+            });
+
+            // 채팅방 알림 구독
+            stompClient.subscribe('/user/queue/chat', function(message) {
+                handleChatMessage(JSON.parse(message.body));
+            });
+
+            // 실시간 통계 구독
+            stompClient.subscribe('/topic/matching/stats', function(message) {
+                handleStatsUpdate(JSON.parse(message.body));
+            });
+
+            showNotification('연결되었습니다!', 'success');
+
+        }, function(error) {
+            console.error('WebSocket 연결 실패:', error);
+            isConnected = false;
+            showNotification('연결 실패. 페이지를 새로고침해주세요.', 'error');
+            setTimeout(connectWebSocket, 5000);
+        });
+    }
+
+    // 매칭 시작
+    async function startMatching() {
+        if (isWaiting) {
+            console.log('이미 매칭 대기 중');
+            return;
+        }
+
+        console.log('매칭 시작 요청');
+
+        try {
+            const response = await fetch('/api/matching/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+            console.log('매칭 요청 결과:', result);
+
+            if (result.success) {
+                if (result.matched) {
+                    handleMatchSuccess(result);
+                } else {
+                    isWaiting = true;
+                    updateUI();
+                    showNotification('매칭 대기 중...', 'success');
+                }
+            } else {
+                showNotification(result.message, 'error');
+            }
+
+        } catch (error) {
+            console.error('매칭 요청 실패:', error);
+            showNotification('매칭 요청 실패. 다시 시도해주세요.', 'error');
+        }
+    }
+
+    // 홈으로 가면서 매칭 취소
+    async function goHomeAndCancel() {
+        console.log('홈으로 이동하면서 매칭 취소');
+
+        try {
+            if (isWaiting) {
+                await fetch('/api/matching/cancel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('매칭 취소 실패:', error);
+        }
+
+        // 성공 여부와 관계없이 홈으로 이동
+        window.location.href = '/';
+    }
+
+    // 매칭 메시지 처리
+    function handleMatchingMessage(message) {
+        console.log('매칭 메시지 수신:', message);
+
+        switch (message.type) {
+            case 'MATCH_FOUND':
+                handleMatchSuccess({
+                    success: true,
+                    matched: true,
+                    roomId: message.roomId,
+                    partner: message.partner,
+                    message: message.message
+                });
+                break;
+
+            case 'MATCHING_CANCELLED':
+                isWaiting = false;
+                updateUI();
+                showNotification(message.message, 'success');
+                break;
+        }
+    }
+
+    // 채팅 메시지 처리
+    function handleChatMessage(message) {
+        console.log('채팅 메시지 수신:', message);
+
+        switch (message.type) {
+            case 'CHAT_ENDED':
+                showNotification('상대방이 채팅을 종료했습니다.', 'error');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+                break;
+        }
+    }
+
+    // 실시간 통계 업데이트 처리
+    function handleStatsUpdate(stats) {
+        console.log('실시간 통계 업데이트:', stats);
+
+        document.getElementById('maleCount').textContent = stats.maleWaiting || 0;
+        document.getElementById('femaleCount').textContent = stats.femaleWaiting || 0;
+        document.getElementById('activeCount').textContent = stats.activeChats || 0;
+
+        // 숫자 변화 애니메이션
+        animateStatChange('maleCount');
+        animateStatChange('femaleCount');
+        animateStatChange('activeCount');
+    }
+
+    // 통계 변화 애니메이션
+    function animateStatChange(elementId) {
+        const element = document.getElementById(elementId);
+        element.style.transform = 'scale(1.2)';
+        element.style.color = '#00ff7f';
+
+        setTimeout(() => {
+            element.style.transform = 'scale(1)';
+            element.style.color = '#00ffff';
+        }, 300);
+    }
+
+    // 매칭 성공 처리
+    function handleMatchSuccess(result) {
+        console.log('매칭 성공:', result);
+
+        isWaiting = false;
+        matchedRoomId = result.roomId;
+
+        let message = result.message || '매칭되었습니다!';
+        if (result.partner) {
+            message += `\n상대방: ${result.partner.username} (${result.partner.age}세, ${result.partner.gender})`;
+        }
+
+        document.getElementById('matchMessage').textContent = message;
+        document.getElementById('matchOverlay').style.display = 'flex';
+
+        showNotification('매칭 성공!', 'success');
+    }
+
+    // 채팅 시작
+    function startChat() {
+        if (!matchedRoomId) {
+            showNotification('채팅방 정보가 없습니다.', 'error');
+            return;
+        }
+
+        console.log('채팅 시작:', matchedRoomId);
+        window.location.href = '/chat/' + matchedRoomId;
+    }
+
+    // 통계 업데이트 (백업용)
+    async function updateStats() {
+        try {
+            const response = await fetch('/api/matching/status');
+            const result = await response.json();
+
+            if (result.success && result.stats && !isConnected) {
+                document.getElementById('maleCount').textContent = result.stats.maleWaiting || 0;
+                document.getElementById('femaleCount').textContent = result.stats.femaleWaiting || 0;
+                document.getElementById('activeCount').textContent = result.stats.activeChats || 0;
+            }
+        } catch (error) {
+            console.error('통계 업데이트 실패:', error);
+        }
+    }
+
+    // UI 상태 업데이트
+    function updateUI() {
+        const statusMessage = document.getElementById('statusMessage');
+
+        if (isWaiting) {
+            statusMessage.innerHTML = '매칭 상대를 찾고 있습니다<span class="waiting-dots"></span>';
+        } else {
+            statusMessage.textContent = '매칭 대기 준비 중...';
+        }
+    }
+
+    // 배경 파티클 생성
+    function createParticles() {
+        const particlesContainer = document.getElementById('particles');
+
+        for (let i = 0; i < 20; i++) {
+            setTimeout(() => {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 6 + 's';
+                particle.style.animationDuration = (Math.random() * 4 + 4) + 's';
+
+                particlesContainer.appendChild(particle);
+
+                setTimeout(() => {
+                    if (particle.parentNode) {
+                        particle.parentNode.removeChild(particle);
+                    }
+                }, 8000);
+
+            }, i * 200);
+        }
+    }
+
+    // 알림 표시
+    function showNotification(message, type = 'success') {
+        const notification = document.getElementById('notification');
+        const messageElement = document.getElementById('notificationMessage');
+
+        messageElement.textContent = message;
+        notification.className = 'notification';
+
+        if (type === 'error') {
+            notification.classList.add('error');
+        }
+
+        notification.style.display = 'block';
+
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, type === 'error' ? 5000 : 3000);
+    }
+
+    // 페이지 언로드 시 정리
+    window.addEventListener('beforeunload', function() {
+        if (stompClient && isConnected) {
+            stompClient.disconnect();
+        }
+    });
+
+    // 배경 마우스 효과
+    document.addEventListener('mousemove', (e) => {
+        const bg = document.querySelector('.bg-animation');
+        const x = e.clientX / window.innerWidth;
+        const y = e.clientY / window.innerHeight;
+
+        bg.style.background = `
+            radial-gradient(circle at ${x * 100}% ${y * 100}%,
+            rgba(0, 255, 255, 0.2) 0%,
+            rgba(0, 128, 255, 0.1) 30%,
+            transparent 70%),
+            linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e, #0f3460)
+        `;
+    });
+</script>
+</body>
+</html>

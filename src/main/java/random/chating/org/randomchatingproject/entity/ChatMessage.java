@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class ChatMessage {
 
-    @Id  // 필수!
+    @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
@@ -43,7 +43,6 @@ public class ChatMessage {
         TEXT, IMAGE, SYSTEM
     }
 
-    // 생성 시점 자동 설정
     @PrePersist
     protected void onCreate() {
         if (timestamp == null) {
