@@ -587,11 +587,6 @@
         }
     }
 
-    // 랜덤 채팅 시작
-    function startRandomChat() {
-        alert('매칭 시스템을 준비 중입니다!\n곧 랜덤 채팅 기능이 추가될 예정입니다.');
-    }
-
     // 프로필 보기 - 프로필 페이지로 이동
     function showProfile() {
         window.location.href = '/profile';
@@ -621,6 +616,156 @@
         linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e, #0f3460)
     `;
     });
+
+    // 랜덤 채팅 시작
+    async function startRandomChat() {
+        console.log('랜덤 채팅 시작 요청');
+
+        // 현재 상태 확인
+        const isInChat = /*[[${isInChat}]]*/ false;
+        const currentRoomId = /*[[${currentRoomId}]]*/ null;
+
+        if (isInChat && currentRoomId) {
+            // 이미 채팅 중이면 해당 채팅방으로 이동
+            console.log('이미 채팅 중, 채팅방으로 이동:', currentRoomId);
+            window.location.href = '/chat/' + currentRoomId;
+            return;
+        }
+
+        try {
+            showChatStatus('매칭을 시작합니다...', 'info');
+
+            const response = await fetch('/api/matching/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+            console.log('매칭 결과:', result);
+
+            if (result.success) {
+                if (result.matched) {
+                    // 즉시 매칭 성공
+                    showChatStatus('매칭 성공! 채팅방으로 이동합니다...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/chat/' + result.roomId;
+                    }, 1500);
+                } else {
+                    // 대기열에 추가됨
+                    showChatStatus('매칭 대기 중... 잠시만 기다려주세요.', 'info');
+                    setTimeout(() => {
+                        window.location.href = '/waiting';
+                    }, 1000);
+                }
+            } else {
+                showChatStatus('매칭 요청 실패: ' + result.message, 'error');
+            }
+
+        } catch (error) {
+            console.error('랜덤 채팅 시작 실패:', error);
+            showChatStatus('연결 오류가 발생했습니다. 다시 시도해주세요.', 'error');
+        }
+    }
+
+    // 채팅 상태 메시지 표시
+    function showChatStatus(message, type = 'info') {
+        // 기존 상태 메시지 제거
+        const existingStatus = document.getElementById('chatStatus');
+        if (existingStatus) {
+            existingStatus.remove();
+        }
+
+        // 새 상태 메시지 생성
+        const statusDiv = document.createElement('div');
+        statusDiv.id = 'chatStatus';
+        statusDiv.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.9);
+                color: white;
+                padding: 20px 30px;
+                border-radius: 15px;
+                border: 2px solid;
+                font-family: 'Rajdhani', sans-serif;
+                font-weight: 600;
+                font-size: 1.1rem;
+                z-index: 10000;
+                backdrop-filter: blur(10px);
+                text-align: center;
+                min-width: 300px;
+                animation: statusSlide 0.3s ease;
+            `;
+
+        // 타입에 따른 색상 설정
+        switch (type) {
+            case 'success':
+                statusDiv.style.borderColor = '#00ff7f';
+                statusDiv.style.color = '#00ff7f';
+                break;
+            case 'error':
+                statusDiv.style.borderColor = '#ff4444';
+                statusDiv.style.color = '#ff4444';
+                break;
+            case 'info':
+            default:
+                statusDiv.style.borderColor = '#00ffff';
+                statusDiv.style.color = '#00ffff';
+                break;
+        }
+
+        statusDiv.innerHTML = `
+                <div style="margin-bottom: 10px;">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'info-circle'}"></i>
+                </div>
+                <div>${message}</div>
+            `;
+
+        // 애니메이션 CSS 추가
+        if (!document.getElementById('statusAnimation')) {
+            const style = document.createElement('style');
+            style.id = 'statusAnimation';
+            style.textContent = `
+                    @keyframes statusSlide {
+                        from {
+                            opacity: 0;
+                            transform: translate(-50%, -60%);
+                        }
+                        to {
+                            opacity: 1;
+                            transform: translate(-50%, -50%);
+                        }
+                    }
+                `;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(statusDiv);
+
+        // 자동 제거
+        if (type !== 'error') {
+            setTimeout(() => {
+                if (statusDiv.parentNode) {
+                    statusDiv.remove();
+                }
+            }, 3000);
+        } else {
+            // 에러 메시지는 클릭으로 제거
+            statusDiv.style.cursor = 'pointer';
+            statusDiv.addEventListener('click', () => {
+                statusDiv.remove();
+            });
+
+            setTimeout(() => {
+                if (statusDiv.parentNode) {
+                    statusDiv.remove();
+                }
+            }, 5000);
+        }
+    }
 </script>
 </body>
 </html>
