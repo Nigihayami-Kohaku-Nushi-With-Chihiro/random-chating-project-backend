@@ -28,20 +28,25 @@ import random.chating.org.randomchatingproject.service.CustomUserDetailsService;
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-    private final JwtProvider jwtProvider;  // final 키워드 추가!
+    private final JwtProvider jwtProvider;
     private final CustomUserDetailsService customUserDetailsService;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
         config.enableSimpleBroker("/topic", "/queue");
         config.setApplicationDestinationPrefixes("/app");
+        config.setUserDestinationPrefix("/user");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
-                .setAllowedOrigins("*")
+                .setAllowedOriginPatterns("*")  // 🔥 이 부분 수정
                 .withSockJS();
+
+        // 개발 환경을 위한 추가 엔드포인트 (SockJS 없이)
+        registry.addEndpoint("/ws")
+                .setAllowedOriginPatterns("*");
     }
 
     @Override
@@ -56,13 +61,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
                     String token = null;
 
-                    // 1순위: Authorization 헤더에서 토큰 확인 (기존 호환성)
+                    // 1순위: Authorization 헤더에서 토큰 확인
                     String authorizationHeader = accessor.getFirstNativeHeader("Authorization");
                     if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
                         token = authorizationHeader.substring(7);
                         log.info("WebSocket Authorization 헤더에서 토큰 추출됨");
                     } else {
-                        // 2순위: 쿠키에서 토큰 확인 (새로운 방식)
+                        // 2순위: 쿠키에서 토큰 확인
                         String cookieHeader = accessor.getFirstNativeHeader("Cookie");
                         if (cookieHeader != null) {
                             token = extractTokenFromCookie(cookieHeader);
@@ -75,13 +80,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     if (token != null) {
                         try {
                             if (jwtProvider.validateToken(token)) {
-                                // ⭐ userId로 사용자 조회하도록 변경
                                 Long userId = jwtProvider.getUserIdFromSubject(token);
                                 String username = jwtProvider.getUsername(token);
 
                                 log.info("WebSocket JWT 토큰 검증 성공, userId: {}, username: {}", userId, username);
 
-                                // userId를 문자열로 변환해서 loadUserByUsername 호출
                                 UserDetails userDetails = customUserDetailsService.loadUserByUsername(userId.toString());
 
                                 Authentication authentication = new UsernamePasswordAuthenticationToken(
@@ -97,15 +100,20 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                             log.error("WebSocket 인증 처리 중 오류: {}", e.getMessage(), e);
                         }
                     } else {
-                        log.warn("WebSocket 토큰이 없음");
+                        log.warn("WebSocket 토큰이 없음 - 익명 연결 허용");
+                        // 토큰이 없어도 연결은 허용 (개발 환경)
                     }
+                } else if (StompCommand.SEND.equals(accessor.getCommand())) {
+                    // 메시지 전송 시 로깅
+                    log.debug("WebSocket 메시지 전송: destination={}", accessor.getDestination());
                 }
+
                 return message;
             }
         });
     }
 
-    // 쿠키에서 토큰 추출하는 헬퍼 메서드 추가
+    // 쿠키에서 토큰 추출하는 헬퍼 메서드
     private String extractTokenFromCookie(String cookieHeader) {
         if (cookieHeader == null) return null;
 

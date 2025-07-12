@@ -667,185 +667,414 @@
 </main>
 
 <script>
-    // 초기 데이터 로드
+    // 전역 변수
+    let stompClient = null;
+    let isConnected = false;
+    let isSubscribed = false;
+    let isMessageSending = false;
+    let roomId = '';
+    let userId = 0;
+    let username = 'User';
+    let userAvatar = 'U';
+
+    // 페이지 로드 시 초기화
     document.addEventListener('DOMContentLoaded', function() {
-        loadProfileData();
+        console.log('채팅 페이지 로드 - 디버깅 시작');
+
+        // Thymeleaf 값들 직접 확인
+        console.log('Thymeleaf roomId:', '/*[[${roomId}]]*/');
+        console.log('Thymeleaf username:', '/*[[${username}]]*/');
+        console.log('Thymeleaf user.id:', /*[[${user.id}]]*/ 0);
+
+        // URL에서 roomId 추출 (백업)
+        const pathParts = window.location.pathname.split('/');
+        const urlRoomId = pathParts[pathParts.length - 1];
+
+        // 값들 설정 - Thymeleaf 문법 제거하고 직접 설정
+        roomId = /*[[${roomId}]]*/ '' || urlRoomId;
+        userId = /*[[${user.id}]]*/ 0;
+        username = /*[[${username}]]*/ 'User';
+        userAvatar = /*[[${userAvatar}]]*/ 'U';
+
+        console.log('설정된 최종 값들:', {roomId, userId, username, userAvatar});
+
+        // username이 여전히 'User'라면 서버에서 가져오기
+        if (username === 'User' || username === '') {
+            fetchCurrentUser().then(() => {
+                initializeChat();
+            });
+        } else {
+            initializeChat();
+        }
     });
 
-    // 프로필 데이터 로드
-    function loadProfileData() {
-        console.log('프로필 데이터 로드 시작');
-
-        // Thymeleaf에서 전달된 관심사 데이터 처리
-        const interests = /*[[${interests}]]*/ [];
-        console.log('관심사 데이터:', interests);
-        if (interests && interests.length > 0) {
-            interests.forEach(interest => addInterestTag(interest));
-        }
-    }
-
-    // 관심사 태그 추가
-    function addInterestTag(interest) {
-        const container = document.getElementById('interests-container');
-        const tag = document.createElement('div');
-        tag.className = 'interest-tag';
-        tag.innerHTML = `
-                ${interest}
-                <span class="remove-tag" onclick="removeInterestTag(this)">
-                    <i class="fas fa-times"></i>
-                </span>
-            `;
-        container.appendChild(tag);
-    }
-
-    // 관심사 태그 제거
-    function removeInterestTag(element) {
-        element.parentElement.remove();
-    }
-
-    // 관심사 추가
-    function addInterest() {
-        const interest = prompt('ADD NEW INTEREST (MAX 20 CHARACTERS):');
-        if (interest && interest.trim() && interest.length <= 20) {
-            const container = document.getElementById('interests-container');
-            const currentTags = container.querySelectorAll('.interest-tag');
-
-            if (currentTags.length >= 5) {
-                showAlert('error', 'MAXIMUM 5 INTERESTS ALLOWED');
-                return;
-            }
-
-            // 중복 체크
-            const existingInterests = Array.from(currentTags).map(tag =>
-                tag.textContent.trim().replace('×', '').trim()
-            );
-
-            if (existingInterests.includes(interest.trim())) {
-                showAlert('error', 'INTEREST ALREADY EXISTS');
-                return;
-            }
-
-            addInterestTag(interest.trim());
-        }
-    }
-
-    // 닉네임 중복 체크
-    async function checkUsername() {
-        const nickname = document.getElementById('nickname').value.trim();
-
-        if (!nickname) {
-            showAlert('error', 'PLEASE ENTER A NICKNAME');
-            return;
-        }
-
+    // 현재 사용자 정보를 서버에서 가져오는 함수
+    async function fetchCurrentUser() {
         try {
-            const response = await fetch(`/api/profile/check-username?username=${encodeURIComponent(nickname)}`);
-            const result = await response.json();
-
-            if (result.success) {
-                showAlert('success', 'NICKNAME IS AVAILABLE!');
-            } else {
-                showAlert('error', result.message.toUpperCase());
+            const response = await fetch('/api/profile');
+            if (response.ok) {
+                const userData = await response.json();
+                if (userData && userData.username) {
+                    username = userData.username;
+                    userAvatar = userData.username.substring(0, 1).toUpperCase();
+                    console.log('서버에서 사용자 정보 가져옴:', {username, userAvatar});
+                }
             }
         } catch (error) {
-            console.error('닉네임 체크 오류:', error);
-            showAlert('error', 'CONNECTION ERROR. TRY AGAIN.');
+            console.error('사용자 정보 가져오기 실패:', error);
+            // 임시로 랜덤 이름 생성
+            username = 'User' + Math.floor(Math.random() * 1000);
+            userAvatar = username.substring(0, 1).toUpperCase();
         }
     }
 
-    // 프로필 저장
-    async function saveProfile() {
-        const formData = gatherFormData();
+    // 채팅 초기화
+    function initializeChat() {
+        console.log('채팅 초기화 시작:', {roomId, userId, username});
 
-        if (!validateForm(formData)) {
+        // WebSocket 연결
+        connectWebSocket();
+
+        // 메시지 입력 이벤트 설정
+        setupMessageInput();
+
+        // 메시지 컨테이너 스크롤을 맨 아래로
+        scrollToBottom();
+    }
+
+    // WebSocket 연결
+    function connectWebSocket() {
+        console.log('WebSocket 연결 시도...');
+
+        const socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+        stompClient.debug = null;
+
+        // 연결 헤더 설정
+        const headers = {};
+
+        // 쿠키에서 토큰 추출해서 헤더에 추가
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'authToken') {
+                headers['Authorization'] = 'Bearer ' + value;
+                console.log('Authorization 헤더 설정됨');
+                break;
+            }
+        }
+
+        stompClient.connect(headers, function(frame) {
+            console.log('WebSocket 연결 성공:', frame);
+            isConnected = true;
+
+            if (!isSubscribed) {
+                // 채팅방 구독
+                stompClient.subscribe('/topic/chat/' + roomId, function(message) {
+                    console.log('채팅 메시지 수신:', message.body);
+                    handleChatMessage(JSON.parse(message.body));
+                });
+
+                // 개인 메시지 구독
+                stompClient.subscribe('/user/queue/chat', function(message) {
+                    console.log('개인 메시지 수신:', message.body);
+                    handlePersonalMessage(JSON.parse(message.body));
+                });
+
+                isSubscribed = true;
+                console.log('구독 설정 완료');
+            }
+
+            // 채팅방 입장 알림
+            stompClient.send('/app/chat.addUser', {}, JSON.stringify({
+                roomId: roomId
+            }));
+
+            console.log('WebSocket 설정 완료');
+
+        }, function(error) {
+            console.error('WebSocket 연결 실패:', error);
+            isConnected = false;
+            isSubscribed = false;
+
+            // 재연결 시도
+            console.log('3초 후 재연결 시도...');
+            setTimeout(connectWebSocket, 3000);
+        });
+    }
+
+    // 메시지 입력 설정
+    function setupMessageInput() {
+        const messageInput = document.getElementById('messageInput');
+
+        // 자동 높이 조절
+        messageInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        // Enter 키 처리
+        messageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // 포커스 설정
+        messageInput.focus();
+    }
+
+    // 메시지 전송
+    function sendMessage() {
+        const messageInput = document.getElementById('messageInput');
+        const message = messageInput.value.trim();
+
+        if (!message || !isConnected || isMessageSending) {
+            console.log('메시지 전송 조건 불만족:', {message: !!message, isConnected, isMessageSending});
             return;
         }
 
+        if (!roomId) {
+            console.error('roomId가 없습니다!');
+            alert('채팅방 정보가 없습니다. 새로고침해주세요.');
+            return;
+        }
+
+        // 중복 전송 방지
+        isMessageSending = true;
+
+        console.log('메시지 전송 시도:', {roomId, username, message});
+
+        // WebSocket으로 메시지 전송
+        const messageData = {
+            type: 'TEXT',
+            roomId: roomId,
+            message: message,
+            senderUsername: username,
+            senderAvatar: userAvatar
+        };
+
         try {
-            const response = await fetch('/api/profile/update', {
+            stompClient.send('/app/chat.sendMessage', {}, JSON.stringify(messageData));
+            console.log('메시지 전송 완료:', messageData);
+
+            // 입력 필드 초기화
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            messageInput.focus();
+
+            // 전송 완료 후 플래그 해제
+            setTimeout(() => {
+                isMessageSending = false;
+            }, 1000);
+
+        } catch (error) {
+            console.error('메시지 전송 실패:', error);
+            alert('메시지 전송에 실패했습니다. 다시 시도해주세요.');
+            isMessageSending = false;
+        }
+    }
+
+    // 채팅 메시지 처리
+    function handleChatMessage(messageData) {
+        console.log('채팅 메시지 처리:', messageData);
+
+        const messagesContainer = document.getElementById('messagesContainer');
+        const messageElement = createMessageElement(messageData);
+
+        // 메시지 추가
+        messagesContainer.appendChild(messageElement);
+
+        // 스크롤 맨 아래로
+        scrollToBottom();
+
+        // 상대방 정보 업데이트
+        if (messageData.senderUsername && messageData.senderUsername !== username && messageData.senderUsername !== 'SYSTEM') {
+            updatePartnerInfo(messageData.senderUsername, messageData.senderAvatar);
+        }
+    }
+
+    // 개인 메시지 처리
+    function handlePersonalMessage(messageData) {
+        console.log('개인 메시지 처리:', messageData);
+
+        switch (messageData.type) {
+            case 'CHAT_ENDED':
+                handleChatEnded(messageData.message);
+                break;
+        }
+    }
+
+    // 메시지 요소 생성
+    function createMessageElement(messageData) {
+        const messageDiv = document.createElement('div');
+        const isMyMessage = messageData.senderUsername === username;
+        const isSystemMessage = messageData.type === 'SYSTEM';
+
+        if (isSystemMessage) {
+            messageDiv.className = 'message message-system';
+        } else if (isMyMessage) {
+            messageDiv.className = 'message message-sent';
+        } else {
+            messageDiv.className = 'message message-received';
+        }
+
+        // 아바타
+        const avatar = document.createElement('div');
+        avatar.className = 'message-avatar';
+        avatar.textContent = messageData.senderAvatar || (isSystemMessage ? 'S' : '?');
+        messageDiv.appendChild(avatar);
+
+        // 메시지 내용
+        const content = document.createElement('div');
+        content.className = 'message-content';
+
+        // 메시지 헤더 (이름, 시간)
+        const header = document.createElement('div');
+        header.className = 'message-header';
+
+        const sender = document.createElement('span');
+        sender.className = 'message-sender';
+        sender.textContent = messageData.senderUsername || 'Unknown';
+        header.appendChild(sender);
+
+        const time = document.createElement('span');
+        time.className = 'message-time';
+        time.textContent = messageData.timestamp || getCurrentTime();
+        header.appendChild(time);
+
+        content.appendChild(header);
+
+        // 메시지 텍스트
+        const text = document.createElement('div');
+        text.className = 'message-text';
+        text.textContent = messageData.message;
+        content.appendChild(text);
+
+        messageDiv.appendChild(content);
+
+        return messageDiv;
+    }
+
+    // 현재 시간 반환
+    function getCurrentTime() {
+        const now = new Date();
+        return now.getHours().toString().padStart(2, '0') + ':' +
+            now.getMinutes().toString().padStart(2, '0');
+    }
+
+    // 스크롤 맨 아래로
+    function scrollToBottom() {
+        const messagesContainer = document.getElementById('messagesContainer');
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // 상대방 정보 업데이트
+    function updatePartnerInfo(partnerUsername, partnerAvatar) {
+        const partnerName = document.getElementById('partnerName');
+        const partnerAvatarElement = document.getElementById('partnerAvatar');
+
+        if (partnerUsername && partnerUsername !== 'SYSTEM') {
+            partnerName.textContent = partnerUsername;
+            partnerAvatarElement.textContent = partnerAvatar || partnerUsername.substring(0, 1).toUpperCase();
+        }
+    }
+
+    // 채팅 종료 관련
+    function showEndChatModal() {
+        document.getElementById('endChatModal').style.display = 'block';
+    }
+
+    function closeModal() {
+        document.getElementById('endChatModal').style.display = 'none';
+    }
+
+    async function endChat() {
+        console.log('채팅 종료 요청');
+
+        try {
+            const response = await fetch('/api/chat/end', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({
+                    roomId: roomId
+                })
             });
 
             const result = await response.json();
 
             if (result.success) {
-                showAlert('success', 'PROFILE UPDATED SUCCESSFULLY!');
-                // 페이지 새로고침하여 업데이트된 정보 반영
+                // WebSocket으로 퇴장 알림
+                if (stompClient && isConnected) {
+                    stompClient.send('/app/chat.removeUser', {}, JSON.stringify({
+                        roomId: roomId
+                    }));
+                }
+
+                // 홈으로 이동
                 setTimeout(() => {
-                    window.location.reload();
-                }, 2000);
+                    window.location.href = '/';
+                }, 1000);
             } else {
-                showAlert('error', result.message.toUpperCase());
+                alert('채팅 종료 중 오류가 발생했습니다: ' + result.message);
             }
+
         } catch (error) {
-            console.error('프로필 저장 오류:', error);
-            showAlert('error', 'SAVE FAILED. TRY AGAIN.');
+            console.error('채팅 종료 실패:', error);
+            alert('채팅 종료 중 오류가 발생했습니다.');
         }
+
+        closeModal();
     }
 
-    // 폼 데이터 수집
-    function gatherFormData() {
-        // 관심사 수집
-        const interestTags = document.querySelectorAll('#interests-container .interest-tag');
-        const interests = Array.from(interestTags).map(tag =>
-            tag.textContent.trim().replace('×', '').trim()
-        );
-
-        return {
-            nickname: document.getElementById('nickname').value.trim(),
-            age: parseInt(document.getElementById('age').value),
-            bio: document.getElementById('bio').value.trim(),
-            location: document.getElementById('location').value.trim(),
-            interests: interests
+    function handleChatEnded(message) {
+        // 시스템 메시지로 종료 알림 표시
+        const messageData = {
+            type: 'SYSTEM',
+            message: message || '채팅이 종료되었습니다.',
+            senderUsername: 'SYSTEM',
+            senderAvatar: 'S',
+            timestamp: getCurrentTime()
         };
-    }
 
-    // 폼 유효성 검사
-    function validateForm(data) {
-        if (!data.nickname || data.nickname.length < 2) {
-            showAlert('error', 'NICKNAME MUST BE AT LEAST 2 CHARACTERS');
-            return false;
-        }
+        handleChatMessage(messageData);
 
-        if (!data.age || data.age < 18 || data.age > 100) {
-            showAlert('error', 'AGE MUST BE BETWEEN 18 AND 100');
-            return false;
-        }
+        // 입력 비활성화
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
 
-        if (data.bio && data.bio.length > 200) {
-            showAlert('error', 'BIO MUST BE LESS THAN 200 CHARACTERS');
-            return false;
-        }
+        messageInput.disabled = true;
+        messageInput.placeholder = '채팅이 종료되었습니다.';
+        sendBtn.disabled = true;
 
-        return true;
-    }
-
-    // 프로필 이미지 변경
-    function changeProfileImage() {
-        alert('PROFILE IMAGE UPLOAD COMING SOON!\nSTAY TUNED, LEGEND!');
-    }
-
-    // 알림 표시
-    function showAlert(type, message) {
-        const alertElement = document.getElementById(type === 'success' ? 'success-alert' : 'error-alert');
-        const messageElement = document.getElementById(type === 'success' ? 'success-message' : 'error-message');
-
-        // 다른 알림 숨기기
-        document.getElementById('success-alert').classList.remove('show');
-        document.getElementById('error-alert').classList.remove('show');
-
-        messageElement.textContent = message;
-        alertElement.classList.add('show');
-
-        // 3초 후 자동 숨김
+        // 3초 후 홈으로 이동
         setTimeout(() => {
-            alertElement.classList.remove('show');
+            window.location.href = '/';
         }, 3000);
     }
+
+    // 페이지 언로드 시 정리
+    window.addEventListener('beforeunload', function() {
+        if (stompClient && isConnected) {
+            // 퇴장 알림
+            stompClient.send('/app/chat.removeUser', {}, JSON.stringify({
+                roomId: roomId
+            }));
+
+            stompClient.disconnect();
+        }
+    });
+
+    // 모달 외부 클릭 시 닫기
+    window.addEventListener('click', function(event) {
+        const modal = document.getElementById('endChatModal');
+        if (event.target === modal) {
+            closeModal();
+        }
+    });
 
     // 배경 마우스 효과
     document.addEventListener('mousemove', (e) => {
@@ -854,12 +1083,12 @@
         const y = e.clientY / window.innerHeight;
 
         bg.style.background = `
-                radial-gradient(circle at ${x * 100}% ${y * 100}%,
-                rgba(0, 255, 255, 0.15) 0%,
-                rgba(255, 0, 128, 0.1) 30%,
-                transparent 70%),
-                linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e, #0f3460)
-            `;
+            radial-gradient(circle at ${x * 100}% ${y * 100}%,
+            rgba(0, 255, 255, 0.1) 0%,
+            rgba(0, 128, 255, 0.05) 30%,
+            transparent 70%),
+            linear-gradient(135deg, #0a0a0a, #1a1a2e, #16213e)
+        `;
     });
 </script>
 </body>
