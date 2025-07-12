@@ -36,23 +36,10 @@ public class UserProfile {
     private String location; // 지역
 
     @Column(name = "interests", length = 500)
-    private String interests; // 관심사 (콤마로 구분)
+    private String interests;
 
     @Column(name = "profile_image_url")
     private String profileImageUrl; // 프로필 이미지 URL
-
-    // 매칭 선호도
-    @Column(name = "preferred_min_age")
-    private Integer preferredMinAge;
-
-    @Column(name = "preferred_max_age")
-    private Integer preferredMaxAge;
-
-    @Column(name = "chat_style", length = 20)
-    private String chatStyle; // 채팅 스타일 (casual, serious, any)
-
-    @Column(name = "meeting_purpose", length = 20)
-    private String meetingPurpose; // 만남 목적 (friendship, dating, chat, any)
 
     // 통계 정보
     @Column(name = "profile_views")

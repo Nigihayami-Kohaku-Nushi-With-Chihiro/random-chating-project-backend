@@ -83,11 +83,6 @@ public class AuthService {
                     .location(null) // 지역 (나중에 입력)
                     .interests(null) // 관심사 (나중에 선택)
                     .profileImageUrl(null) // 프로필 이미지 (나중에 업로드)
-                    // 매칭 선호도 기본값
-                    .preferredMinAge(18) // 최소 연령 18세
-                    .preferredMaxAge(calculatePreferredMaxAge(request.getAge())) // 스마트 계산
-                    .chatStyle("any") // 채팅 스타일: "casual", "serious", "any"
-                    .meetingPurpose("friendship") // 만남 목적: "friendship", "dating", "chat", "any"
                     // 통계 초기값
                     .profileViews(0) // 프로필 조회수
                     .totalChats(0) // 총 채팅 수

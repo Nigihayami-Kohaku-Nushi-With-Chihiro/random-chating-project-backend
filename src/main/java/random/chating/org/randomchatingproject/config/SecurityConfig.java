@@ -74,6 +74,9 @@ public class SecurityConfig {
                             .requestMatchers("/admin/**").hasRole("ADMIN")
                             .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
+                            .requestMatchers("/waiting", "/chat/**").hasAnyRole("USER", "ADMIN")
+                            .requestMatchers("/api/matching/**", "/api/chat/**").hasAnyRole("USER", "ADMIN")
+
                             // 나머지는 인증 필요
                             .anyRequest().authenticated();
                 })

@@ -27,15 +27,16 @@ public class JwtProvider {
     // ========== JWT 토큰 생성 ==========
 
     /**
-     * User Entity로 JWT 토큰 생성 (userId, email, gender, age 포함)
+     * User Entity로 JWT 토큰 생성 (Subject에는 userId, Claims에는 다른 정보들)
      */
     public String generateToken(User user) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + EXPIRATION_TIME);
 
         String token = Jwts.builder()
-                .setSubject(user.getUsername())              // username
-                .claim("userId", user.getId())               // 사용자 ID
+                .setSubject(user.getId().toString())         // ⭐ Subject에 userId (숫자)
+                .claim("username", user.getUsername())       // username은 claim으로
+                .claim("userId", user.getId())               // 사용자 ID (중복이지만 호환성)
                 .claim("email", user.getEmail())             // 이메일
                 .claim("gender", user.getGender().name())    // 성별 (MALE/FEMALE)
                 .claim("age", user.getAge())                 // 나이
@@ -44,8 +45,8 @@ public class JwtProvider {
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
 
-        log.info("JWT 토큰 생성: username={}, userId={}, email={}, gender={}, age={}",
-                user.getUsername(), user.getId(), user.getEmail(), user.getGender(), user.getAge());
+        log.info("JWT 토큰 생성: userId={}, username={}, email={}, gender={}, age={}",
+                user.getId(), user.getUsername(), user.getEmail(), user.getGender(), user.getAge());
 
         return token;
     }
@@ -79,12 +80,26 @@ public class JwtProvider {
     // ========== JWT 정보 추출 ==========
 
     /**
-     * 토큰에서 사용자명 추출
+     * 토큰에서 userId 추출 (Subject에서)
+     */
+    public Long getUserIdFromSubject(String token) {
+        try {
+            Claims claims = getClaims(token);
+            String subject = claims.getSubject();
+            return Long.parseLong(subject);
+        } catch (Exception e) {
+            log.error("JWT Subject에서 userId 추출 실패: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 토큰에서 사용자명 추출 (Claim에서)
      */
     public String getUsername(String token) {
         try {
             Claims claims = getClaims(token);
-            return claims.getSubject();
+            return claims.get("username", String.class);
         } catch (Exception e) {
             log.error("JWT에서 사용자명 추출 실패: {}", e.getMessage());
             throw new RuntimeException("JWT 파싱 실패", e);
@@ -92,7 +107,7 @@ public class JwtProvider {
     }
 
     /**
-     * 토큰에서 사용자 ID 추출
+     * 토큰에서 사용자 ID 추출 (Claim에서 - 호환성)
      */
     public Long getUserId(String token) {
         try {

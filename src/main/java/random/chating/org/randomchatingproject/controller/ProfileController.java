@@ -42,13 +42,9 @@ public class ProfileController {
         // 확장 프로필 정보 조회 (없으면 기본값)
         UserProfile profile = profileService.getUserProfile(user.getId());
         if (profile != null) {
-            model.addAttribute("bio", profile.getBio());
-            model.addAttribute("location", profile.getLocation());
+            model.addAttribute("bio", profile.getBio() != null ? profile.getBio() : "");
+            model.addAttribute("location", profile.getLocation() != null ? profile.getLocation() : "");
             model.addAttribute("interests", profile.getInterestsList());
-            model.addAttribute("chatStyle", profile.getChatStyle());
-            model.addAttribute("meetingPurpose", profile.getMeetingPurpose());
-            model.addAttribute("preferredMinAge", profile.getPreferredMinAge());
-            model.addAttribute("preferredMaxAge", profile.getPreferredMaxAge());
             model.addAttribute("profileViews", profile.getProfileViews());
             model.addAttribute("totalChats", profile.getTotalChats());
         } else {
@@ -56,10 +52,6 @@ public class ProfileController {
             model.addAttribute("bio", "");
             model.addAttribute("location", "");
             model.addAttribute("interests", java.util.Collections.emptyList());
-            model.addAttribute("chatStyle", "any");
-            model.addAttribute("meetingPurpose", "friendship");
-            model.addAttribute("preferredMinAge", 18);
-            model.addAttribute("preferredMaxAge", user.getAge() != null ? user.getAge() + 10 : 100);
             model.addAttribute("profileViews", 0);
             model.addAttribute("totalChats", 0);
         }

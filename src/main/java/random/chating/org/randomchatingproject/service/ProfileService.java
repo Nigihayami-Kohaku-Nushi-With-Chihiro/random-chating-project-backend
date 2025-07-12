@@ -53,10 +53,6 @@ public class ProfileService {
         UserProfile profile = userProfileRepository.findByUserId(userId)
                 .orElse(UserProfile.builder()
                         .userId(userId)
-                        .preferredMinAge(18)
-                        .preferredMaxAge(100)
-                        .chatStyle("any")
-                        .meetingPurpose("friendship")
                         .profileViews(0)
                         .totalChats(0)
                         .build());
@@ -78,23 +74,6 @@ public class ProfileService {
                 throw new RuntimeException("관심사는 최대 5개까지 선택할 수 있습니다");
             }
             profile.setInterestsList(request.getInterests());
-        }
-
-        // 매칭 선호도 설정
-        if (request.getPreferredMinAge() != null) {
-            profile.setPreferredMinAge(request.getPreferredMinAge());
-        }
-
-        if (request.getPreferredMaxAge() != null) {
-            profile.setPreferredMaxAge(request.getPreferredMaxAge());
-        }
-
-        if (request.getChatStyle() != null) {
-            profile.setChatStyle(request.getChatStyle());
-        }
-
-        if (request.getMeetingPurpose() != null) {
-            profile.setMeetingPurpose(request.getMeetingPurpose());
         }
 
         userProfileRepository.save(profile);
@@ -137,10 +116,6 @@ public class ProfileService {
                 .orElseGet(() -> {
                     UserProfile newProfile = UserProfile.builder()
                             .userId(userId)
-                            .preferredMinAge(18)
-                            .preferredMaxAge(100)
-                            .chatStyle("any")
-                            .meetingPurpose("friendship")
                             .profileViews(0)
                             .totalChats(0)
                             .build();
@@ -239,16 +214,14 @@ public class ProfileService {
         User currentUser = userRepository.findById(userId).orElse(null);
         if (currentUser == null) return java.util.Collections.emptyList();
 
-        UserProfile currentProfile = getUserProfile(userId);
-
-        // 간단한 추천 로직: 반대 성별, 비슷한 나이대
+        // 간단한 추천 로직: 반대 성별, 스마트한 나이대 계산
         User.Gender targetGender = currentUser.getGender() == User.Gender.MALE ?
                 User.Gender.FEMALE : User.Gender.MALE;
 
-        int minAge = currentProfile != null && currentProfile.getPreferredMinAge() != null ?
-                currentProfile.getPreferredMinAge() : 18;
-        int maxAge = currentProfile != null && currentProfile.getPreferredMaxAge() != null ?
-                currentProfile.getPreferredMaxAge() : 100;
+        // ⭐ 사용자 나이 기반으로 스마트하게 범위 계산
+        int userAge = currentUser.getAge() != null ? currentUser.getAge() : 25;
+        int minAge = Math.max(18, userAge - 10); // 최소 18세, 본인보다 10살 아래까지
+        int maxAge = Math.min(100, userAge + 15); // 최대 100세, 본인보다 15살 위까지
 
         return userRepository.findByGenderAndAgeBetweenAndEnabledTrue(targetGender, minAge, maxAge)
                 .stream()

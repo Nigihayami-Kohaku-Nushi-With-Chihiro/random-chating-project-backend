@@ -50,10 +50,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (StringUtils.hasText(token)) {
                 log.info("토큰 검증 시작");
                 if (jwtProvider.validateToken(token)) {
+                    // ⭐ userId로 사용자 조회하도록 변경
+                    Long userId = jwtProvider.getUserIdFromSubject(token);
                     String username = jwtProvider.getUsername(token);
-                    log.info("토큰에서 사용자명 추출: {}", username);
 
-                    UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
+                    log.info("토큰에서 추출 - userId: {}, username: {}", userId, username);
+
+                    // userId를 문자열로 변환해서 사용자 조회
+                    UserDetails userDetails = customUserDetailsService.loadUserByUsername(userId.toString());
                     log.info("사용자 정보 로드 완료: {}", userDetails.getUsername());
 
                     Authentication authentication = new UsernamePasswordAuthenticationToken(
@@ -61,7 +65,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     );
                     SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                    log.info("SecurityContext에 인증 정보 설정 완료: {}", username);
+                    log.info("SecurityContext에 인증 정보 설정 완료: userId={}, username={}", userId, username);
                 } else {
                     log.warn("토큰 검증 실패");
                 }

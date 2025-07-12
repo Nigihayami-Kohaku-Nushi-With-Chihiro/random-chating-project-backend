@@ -23,23 +23,45 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     /**
      * JWT 필터에서 호출됨
-     * JWT 토큰의 username으로 사용자 정보 조회
+     * JWT 토큰의 Subject(userId) 또는 username으로 사용자 정보 조회
      */
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        log.debug("JWT에서 사용자 정보 로드 시도: {}", username);
+    public UserDetails loadUserByUsername(String usernameOrUserId) throws UsernameNotFoundException {
+        log.debug("JWT에서 사용자 정보 로드 시도: {}", usernameOrUserId);
 
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> {
-                    log.warn("사용자를 찾을 수 없습니다: {}", username);
-                    return new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + username);
-                });
+        User user = null;
+
+        // ⭐ 먼저 userId(숫자)로 조회 시도
+        try {
+            Long userId = Long.parseLong(usernameOrUserId);
+            user = userRepository.findById(userId).orElse(null);
+            if (user != null) {
+                log.debug("userId로 사용자 발견: userId={}, username={}", userId, user.getUsername());
+            }
+        } catch (NumberFormatException e) {
+            // 숫자가 아니면 username으로 조회
+            log.debug("숫자가 아니므로 username으로 조회: {}", usernameOrUserId);
+        }
+
+        // userId로 찾지 못했으면 username으로 조회
+        if (user == null) {
+            user = userRepository.findByUsername(usernameOrUserId).orElse(null);
+            if (user != null) {
+                log.debug("username으로 사용자 발견: {}", user.getUsername());
+            }
+        }
+
+        // 둘 다 실패하면 예외
+        if (user == null) {
+            log.warn("사용자를 찾을 수 없습니다: {}", usernameOrUserId);
+            throw new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + usernameOrUserId);
+        }
 
         // 계정 상태 확인 및 로깅
         validateAccountStatus(user);
 
-        log.debug("사용자 정보 로드 완료: username={}, email={}, gender={}, age={}",
-                user.getUsername(), user.getEmail(), user.getGender(), user.getAge());
+        log.debug("사용자 정보 로드 완료: userId={}, username={}, email={}, gender={}, age={}",
+                user.getId(), user.getUsername(), user.getEmail(), user.getGender(), user.getAge());
 
         // User Entity를 바로 반환 (UserDetails 구현했으므로)
         return user;

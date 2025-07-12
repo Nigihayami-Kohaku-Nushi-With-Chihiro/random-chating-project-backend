@@ -75,17 +75,21 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     if (token != null) {
                         try {
                             if (jwtProvider.validateToken(token)) {
+                                // ⭐ userId로 사용자 조회하도록 변경
+                                Long userId = jwtProvider.getUserIdFromSubject(token);
                                 String username = jwtProvider.getUsername(token);
-                                log.info("WebSocket JWT 토큰 검증 성공, 사용자: {}", username);
 
-                                UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
+                                log.info("WebSocket JWT 토큰 검증 성공, userId: {}, username: {}", userId, username);
+
+                                // userId를 문자열로 변환해서 loadUserByUsername 호출
+                                UserDetails userDetails = customUserDetailsService.loadUserByUsername(userId.toString());
 
                                 Authentication authentication = new UsernamePasswordAuthenticationToken(
                                         userDetails, null, userDetails.getAuthorities()
                                 );
 
                                 accessor.setUser(authentication);
-                                log.info("WebSocket 인증 설정 완료: {}", username);
+                                log.info("WebSocket 인증 설정 완료: userId={}, username={}", userId, username);
                             } else {
                                 log.warn("WebSocket JWT 토큰 검증 실패");
                             }

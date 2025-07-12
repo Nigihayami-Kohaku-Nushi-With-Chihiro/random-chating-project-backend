@@ -15,8 +15,4 @@ public class ProfileUpdateRequest {
     private String bio;            // 자기소개
     private String location;       // 지역
     private List<String> interests; // 관심사 목록
-    private Integer preferredMinAge; // 선호 최소 나이
-    private Integer preferredMaxAge; // 선호 최대 나이
-    private String chatStyle;      // 채팅 스타일
-    private String meetingPurpose; // 만남 목적
 }
