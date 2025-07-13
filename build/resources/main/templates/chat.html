@@ -187,18 +187,6 @@
             max-width: 70%;
             display: flex;
             gap: 12px;
-            animation: messageSlide 0.3s ease;
-        }
-
-        @keyframes messageSlide {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
 
         .message-avatar {
@@ -541,142 +529,98 @@
 </div>
 
 <script>
-    // 전역 변수
+    // 전역 변수 - 최소한으로
     let stompClient = null;
     let isConnected = false;
-    let isSubscribed = false;
-    let isMessageSending = false;
     let roomId = '';
-    let userId = 0;
     let username = 'User';
     let userAvatar = 'U';
 
     // 페이지 로드 시 초기화
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('채팅 페이지 로드 시작');
+        console.log('채팅 페이지 로드');
 
-        // 1단계: URL에서 roomId 추출
+        // URL에서 roomId 추출
         const pathParts = window.location.pathname.split('/');
         roomId = pathParts[pathParts.length - 1];
-        console.log('URL에서 추출한 roomId:', roomId);
+        console.log('roomId:', roomId);
 
-        // 2단계: 서버에서 현재 사용자 정보 가져오기
-        fetchCurrentUserAndInit();
+        // 사용자 정보 가져오기
+        fetchUserInfo().then(() => {
+            // WebSocket 연결
+            connectWebSocket();
+            // 입력 설정
+            setupMessageInput();
+            // 스크롤
+            scrollToBottom();
+        });
     });
 
-    // 현재 사용자 정보 가져오고 초기화
-    async function fetchCurrentUserAndInit() {
+    // 사용자 정보 가져오기
+    async function fetchUserInfo() {
         try {
-            console.log('서버에서 사용자 정보 요청...');
             const response = await fetch('/api/profile');
-
             if (response.ok) {
                 const userData = await response.json();
-                console.log('서버 응답:', userData);
-
                 if (userData && userData.username) {
-                    userId = userData.id;
                     username = userData.username;
                     userAvatar = userData.username.substring(0, 1).toUpperCase();
-                    console.log('사용자 정보 설정 완료:', {userId, username, userAvatar});
-                } else {
-                    console.error('서버에서 사용자 정보를 가져오지 못함');
-                    // 기본값 유지하고 진행
+                    console.log('사용자 정보:', {username, userAvatar});
                 }
-            } else {
-                console.error('API 호출 실패:', response.status);
-                // 로그인 페이지로 리다이렉트
-                window.location.href = '/login';
-                return;
             }
         } catch (error) {
-            console.error('사용자 정보 요청 실패:', error);
-            // 에러 발생해도 진행
+            console.error('사용자 정보 가져오기 실패:', error);
         }
-
-        // 3단계: 모든 정보 준비 완료 후 채팅 초기화
-        console.log('최종 설정된 값들:', {roomId, userId, username, userAvatar});
-        initializeChat();
-    }
-
-    // 채팅 초기화
-    function initializeChat() {
-        if (!roomId) {
-            console.error('roomId가 없어서 초기화 중단');
-            alert('채팅방 정보가 없습니다.');
-            window.location.href = '/';
-            return;
-        }
-
-        console.log('채팅 초기화 시작:', {roomId, userId, username});
-
-        // WebSocket 연결
-        connectWebSocket();
-
-        // 메시지 입력 이벤트 설정
-        setupMessageInput();
-
-        // 메시지 컨테이너 스크롤을 맨 아래로
-        scrollToBottom();
     }
 
     // WebSocket 연결
     function connectWebSocket() {
-        console.log('WebSocket 연결 시도...');
+        console.log('WebSocket 연결 시도');
 
         const socket = new SockJS('/ws');
         stompClient = Stomp.over(socket);
         stompClient.debug = null;
 
-        // 연결 헤더 설정
-        const headers = {};
-
-        // 쿠키에서 토큰 추출해서 헤더에 추가
+        // 쿠키에서 토큰 가져오기
         const cookies = document.cookie.split(';');
+        let token = null;
         for (let cookie of cookies) {
             const [name, value] = cookie.trim().split('=');
             if (name === 'authToken') {
-                headers['Authorization'] = 'Bearer ' + value;
-                console.log('Authorization 헤더 설정됨');
+                token = value;
                 break;
             }
         }
 
+        const headers = {};
+        if (token) {
+            headers['Authorization'] = 'Bearer ' + token;
+        }
+
         stompClient.connect(headers, function(frame) {
-            console.log('WebSocket 연결 성공:', frame);
+            console.log('WebSocket 연결 성공');
             isConnected = true;
 
-            if (!isSubscribed) {
-                // 채팅방 구독
-                stompClient.subscribe('/topic/chat/' + roomId, function(message) {
-                    console.log('채팅 메시지 수신:', message.body);
-                    handleChatMessage(JSON.parse(message.body));
-                });
+            // 채팅방 구독
+            stompClient.subscribe('/topic/chat/' + roomId, function(message) {
+                const messageData = JSON.parse(message.body);
+                addMessageToChat(messageData);
+            });
 
-                // 개인 메시지 구독
-                stompClient.subscribe('/user/queue/chat', function(message) {
-                    console.log('개인 메시지 수신:', message.body);
-                    handlePersonalMessage(JSON.parse(message.body));
-                });
+            // 개인 메시지 구독
+            stompClient.subscribe('/user/queue/chat', function(message) {
+                const messageData = JSON.parse(message.body);
+                handlePersonalMessage(messageData);
+            });
 
-                isSubscribed = true;
-                console.log('구독 설정 완료');
-            }
-
-            // 채팅방 입장 알림
+            // 입장 알림
             stompClient.send('/app/chat.addUser', {}, JSON.stringify({
                 roomId: roomId
             }));
 
-            console.log('WebSocket 설정 완료');
-
         }, function(error) {
             console.error('WebSocket 연결 실패:', error);
             isConnected = false;
-            isSubscribed = false;
-
-            // 재연결 시도
-            console.log('3초 후 재연결 시도...');
             setTimeout(connectWebSocket, 3000);
         });
     }
@@ -692,73 +636,30 @@
         });
 
         // Enter 키 처리
-        messageInput.addEventListener('keydown', function(e) {
+        messageInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
             }
         });
 
-        // 포커스 설정
         messageInput.focus();
     }
 
-    // 메시지 전송
+    // 메시지 전송 - 완전히 단순하게
     function sendMessage() {
         const messageInput = document.getElementById('messageInput');
         const message = messageInput.value.trim();
 
-        if (!message || !isConnected || isMessageSending) {
-            console.log('메시지 전송 조건 불만족:', {message: !!message, isConnected, isMessageSending});
+        if (!message || !isConnected) {
             return;
         }
 
-        if (!roomId) {
-            console.error('roomId가 없습니다!');
-            alert('채팅방 정보가 없습니다. 새로고침해주세요.');
-            return;
-        }
+        // 즉시 입력창 클리어
+        messageInput.value = '';
+        messageInput.style.height = 'auto';
 
-        // username이 여전히 'User'인지 체크
-        if (username === 'User') {
-            console.warn('username이 여전히 User입니다. 서버에서 다시 가져오기 시도...');
-            fetchCurrentUserAndSend(message);
-            return;
-        }
-
-        sendMessageWithUserInfo(message);
-    }
-
-    // 사용자 정보 다시 가져오고 메시지 전송
-    async function fetchCurrentUserAndSend(message) {
-        try {
-            const response = await fetch('/api/profile');
-            if (response.ok) {
-                const userData = await response.json();
-                if (userData && userData.username) {
-                    username = userData.username;
-                    userAvatar = userData.username.substring(0, 1).toUpperCase();
-                    console.log('사용자 정보 재설정:', {username, userAvatar});
-                    sendMessageWithUserInfo(message);
-                    return;
-                }
-            }
-        } catch (error) {
-            console.error('사용자 정보 재요청 실패:', error);
-        }
-
-        console.error('사용자 정보를 가져올 수 없어서 메시지 전송 중단');
-        alert('사용자 정보를 확인할 수 없습니다. 새로고침해주세요.');
-    }
-
-    // 실제 메시지 전송
-    function sendMessageWithUserInfo(message) {
-        // 중복 전송 방지
-        isMessageSending = true;
-
-        console.log('메시지 전송 시도:', {roomId, username, message});
-
-        // WebSocket으로 메시지 전송
+        // 메시지 전송
         const messageData = {
             type: 'TEXT',
             roomId: roomId,
@@ -769,53 +670,25 @@
 
         try {
             stompClient.send('/app/chat.sendMessage', {}, JSON.stringify(messageData));
-            console.log('메시지 전송 완료:', messageData);
-
-            // 입력 필드 초기화
-            const messageInput = document.getElementById('messageInput');
-            messageInput.value = '';
-            messageInput.style.height = 'auto';
-            messageInput.focus();
-
-            // 전송 완료 후 플래그 해제
-            setTimeout(() => {
-                isMessageSending = false;
-            }, 1000);
-
+            console.log('메시지 전송:', message);
         } catch (error) {
             console.error('메시지 전송 실패:', error);
-            alert('메시지 전송에 실패했습니다. 다시 시도해주세요.');
-            isMessageSending = false;
         }
     }
 
-    // 채팅 메시지 처리
-    function handleChatMessage(messageData) {
-        console.log('채팅 메시지 처리:', messageData);
+    // 채팅에 메시지 추가
+    function addMessageToChat(messageData) {
+        console.log('메시지 수신:', messageData);
 
         const messagesContainer = document.getElementById('messagesContainer');
         const messageElement = createMessageElement(messageData);
 
-        // 메시지 추가
         messagesContainer.appendChild(messageElement);
-
-        // 스크롤 맨 아래로
         scrollToBottom();
 
         // 상대방 정보 업데이트
         if (messageData.senderUsername && messageData.senderUsername !== username && messageData.senderUsername !== 'SYSTEM') {
             updatePartnerInfo(messageData.senderUsername, messageData.senderAvatar);
-        }
-    }
-
-    // 개인 메시지 처리
-    function handlePersonalMessage(messageData) {
-        console.log('개인 메시지 처리:', messageData);
-
-        switch (messageData.type) {
-            case 'CHAT_ENDED':
-                handleChatEnded(messageData.message);
-                break;
         }
     }
 
@@ -833,51 +706,28 @@
             messageDiv.className = 'message message-received';
         }
 
-        // 아바타
-        const avatar = document.createElement('div');
-        avatar.className = 'message-avatar';
-        avatar.textContent = messageData.senderAvatar || (isSystemMessage ? 'S' : '?');
-        messageDiv.appendChild(avatar);
-
-        // 메시지 내용
-        const content = document.createElement('div');
-        content.className = 'message-content';
-
-        // 메시지 헤더 (이름, 시간)
-        const header = document.createElement('div');
-        header.className = 'message-header';
-
-        const sender = document.createElement('span');
-        sender.className = 'message-sender';
-        sender.textContent = messageData.senderUsername || 'Unknown';
-        header.appendChild(sender);
-
-        const time = document.createElement('span');
-        time.className = 'message-time';
-        time.textContent = messageData.timestamp || getCurrentTime();
-        header.appendChild(time);
-
-        content.appendChild(header);
-
-        // 메시지 텍스트
-        const text = document.createElement('div');
-        text.className = 'message-text';
-        text.textContent = messageData.message;
-        content.appendChild(text);
-
-        messageDiv.appendChild(content);
+        messageDiv.innerHTML = `
+            <div class="message-avatar">${messageData.senderAvatar || '?'}</div>
+            <div class="message-content">
+                <div class="message-header">
+                    <span class="message-sender">${messageData.senderUsername || 'Unknown'}</span>
+                    <span class="message-time">${messageData.timestamp || getCurrentTime()}</span>
+                </div>
+                <div class="message-text">${messageData.message}</div>
+            </div>
+        `;
 
         return messageDiv;
     }
 
-    // 현재 시간 반환
+    // 현재 시간
     function getCurrentTime() {
         const now = new Date();
         return now.getHours().toString().padStart(2, '0') + ':' +
             now.getMinutes().toString().padStart(2, '0');
     }
 
-    // 스크롤 맨 아래로
+    // 스크롤
     function scrollToBottom() {
         const messagesContainer = document.getElementById('messagesContainer');
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -885,12 +735,24 @@
 
     // 상대방 정보 업데이트
     function updatePartnerInfo(partnerUsername, partnerAvatar) {
-        const partnerName = document.getElementById('partnerName');
-        const partnerAvatarElement = document.getElementById('partnerAvatar');
+        document.getElementById('partnerName').textContent = partnerUsername;
+        document.getElementById('partnerAvatar').textContent = partnerAvatar || partnerUsername.substring(0, 1).toUpperCase();
+    }
 
-        if (partnerUsername && partnerUsername !== 'SYSTEM') {
-            partnerName.textContent = partnerUsername;
-            partnerAvatarElement.textContent = partnerAvatar || partnerUsername.substring(0, 1).toUpperCase();
+    // 개인 메시지 처리
+    function handlePersonalMessage(messageData) {
+        if (messageData.type === 'CHAT_ENDED') {
+            addMessageToChat({
+                type: 'SYSTEM',
+                message: '상대방이 채팅을 종료했습니다.',
+                senderUsername: 'SYSTEM',
+                senderAvatar: 'S',
+                timestamp: getCurrentTime()
+            });
+
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 3000);
         }
     }
 
@@ -904,8 +766,6 @@
     }
 
     async function endChat() {
-        console.log('채팅 종료 요청');
-
         try {
             const response = await fetch('/api/chat/end', {
                 method: 'POST',
@@ -917,67 +777,23 @@
                 })
             });
 
-            const result = await response.json();
-
-            if (result.success) {
-                // WebSocket으로 퇴장 알림
+            if (response.ok) {
                 if (stompClient && isConnected) {
                     stompClient.send('/app/chat.removeUser', {}, JSON.stringify({
                         roomId: roomId
                     }));
                 }
 
-                // 홈으로 이동
                 setTimeout(() => {
                     window.location.href = '/';
                 }, 1000);
-            } else {
-                alert('채팅 종료 중 오류가 발생했습니다: ' + result.message);
             }
-
         } catch (error) {
             console.error('채팅 종료 실패:', error);
-            alert('채팅 종료 중 오류가 발생했습니다.');
         }
 
         closeModal();
     }
-
-    function handleChatEnded(message) {
-        // 시스템 메시지로 종료 알림 표시
-        const messageData = {
-            type: 'SYSTEM',
-            message: message || '채팅이 종료되었습니다.',
-            senderUsername: 'SYSTEM',
-            senderAvatar: 'S',
-            timestamp: getCurrentTime()
-        };
-
-        handleChatMessage(messageData);
-
-        // 입력 비활성화
-        const messageInput = document.getElementById('messageInput');
-        const sendBtn = document.getElementById('sendBtn');
-
-        messageInput.disabled = true;
-        messageInput.placeholder = '채팅이 종료되었습니다.';
-        sendBtn.disabled = true;
-
-        // 3초 후 홈으로 이동
-        setTimeout(() => {
-            window.location.href = '/';
-        }, 3000);
-    }
-
-    // 페이지 언로드 시 정리
-    window.addEventListener('beforeunload', function() {
-        if (stompClient && isConnected) {
-            stompClient.send('/app/chat.removeUser', {}, JSON.stringify({
-                roomId: roomId
-            }));
-            stompClient.disconnect();
-        }
-    });
 
     // 모달 외부 클릭 시 닫기
     window.addEventListener('click', function(event) {
@@ -987,19 +803,14 @@
         }
     });
 
-    // 배경 마우스 효과
-    document.addEventListener('mousemove', (e) => {
-        const bg = document.querySelector('.bg-animation');
-        const x = e.clientX / window.innerWidth;
-        const y = e.clientY / window.innerHeight;
-
-        bg.style.background = `
-            radial-gradient(circle at ${x * 100}% ${y * 100}%,
-            rgba(0, 255, 255, 0.1) 0%,
-            rgba(0, 128, 255, 0.05) 30%,
-            transparent 70%),
-            linear-gradient(135deg, #0a0a0a, #1a1a2e, #16213e)
-        `;
+    // 페이지 언로드 시 정리
+    window.addEventListener('beforeunload', function() {
+        if (stompClient && isConnected) {
+            stompClient.send('/app/chat.removeUser', {}, JSON.stringify({
+                roomId: roomId
+            }));
+            stompClient.disconnect();
+        }
     });
 </script>
 </body>
