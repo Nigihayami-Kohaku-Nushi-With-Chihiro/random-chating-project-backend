@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMAIL VERIFICATION - RANDOM CHAT</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            overflow-y: auto;
+        }
+
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(45deg, #1a0033, #330066, #4d0099, #6600cc);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 70% 30%, rgba(255, 0, 255, 0.3) 0%, transparent 70%);
+        }
+
+        .bg-animation::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="%2300ff7f" fill-opacity="0.03"><circle cx="30" cy="30" r="2"/></g></svg>');
+            animation: backgroundFloat 25s linear infinite;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes backgroundFloat {
+            0% { transform: translateY(0px) rotate(0deg); }
+            100% { transform: translateY(-60px) rotate(360deg); }
+        }
+
+        .verification-container {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 255, 127, 0.2);
+            border-radius: 25px;
+            padding: 0;
+            width: 100%;
+            max-width: 500px;
+            margin: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .verification-container::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #ff0080, #ff8c00, #00ffff, #ff0080);
+            background-size: 400% 400%;
+            border-radius: 25px;
+            z-index: -1;
+            animation: borderGlow 4s ease infinite;
+        }
+
+        @keyframes borderGlow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .verification-header {
+            background: linear-gradient(135deg, rgba(255, 0, 128, 0.3), rgba(255, 140, 0, 0.3));
+            padding: 40px 30px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 0, 128, 0.3);
+        }
+
+        .verification-icon {
+            font-size: 4rem;
+            color: #ff0080;
+            margin-bottom: 20px;
+            animation: emailPulse 2s ease infinite;
+            text-shadow: 0 0 20px rgba(255, 0, 128, 0.6);
+        }
+
+        @keyframes emailPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .verification-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #ff0080;
+            margin-bottom: 10px;
+            text-shadow: 0 0 30px rgba(255, 0, 128, 0.8);
+        }
+
+        .verification-subtitle {
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 300;
+        }
+
+        .verification-form {
+            padding: 40px;
+        }
+
+        .status-message {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            border-radius: 15px;
+            background: rgba(0, 255, 127, 0.1);
+            border: 1px solid rgba(0, 255, 127, 0.3);
+            color: #00ff7f;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: #00ff7f;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .code-input-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .code-digit {
+            width: 60px;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(0, 255, 127, 0.3);
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 1.5rem;
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+            text-align: center;
+            transition: all 0.3s ease;
+            ime-mode: disabled;
+        }
+
+        .code-digit:focus {
+            outline: none;
+            border-color: #00ff7f;
+            box-shadow: 0 0 20px rgba(0, 255, 127, 0.3);
+            background: rgba(0, 0, 0, 0.6);
+            transform: scale(1.05);
+        }
+
+        .code-digit.filled {
+            background: rgba(0, 255, 127, 0.2);
+            border-color: #00ff7f;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 18px;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #00ff7f, #00ffff);
+            color: #000;
+            border: 2px solid transparent;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(0, 255, 127, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #00ff7f;
+            border: 2px solid #00ff7f;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(0, 255, 127, 0.1);
+            box-shadow: 0 10px 25px rgba(0, 255, 127, 0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            display: none;
+            text-align: center;
+        }
+
+        .alert.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        .alert-danger {
+            background: rgba(255, 23, 68, 0.1);
+            border: 1px solid rgba(255, 23, 68, 0.3);
+            color: #ff1744;
+        }
+
+        .alert-success {
+            background: rgba(0, 255, 127, 0.1);
+            border: 1px solid rgba(0, 255, 127, 0.3);
+            color: #00ff7f;
+        }
+
+        .alert-warning {
+            background: rgba(255, 140, 0, 0.1);
+            border: 1px solid rgba(255, 140, 0, 0.3);
+            color: #ff8c00;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .email-info {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(0, 255, 127, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .email-address {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #00ff7f;
+            margin-bottom: 10px;
+        }
+
+        .email-hint {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.5;
+        }
+
+        .resend-timer {
+            text-align: center;
+            margin: 20px 0;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+        }
+
+        .timer-count {
+            color: #ff8c00;
+            font-weight: 600;
+        }
+
+        .form-links {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .form-links a {
+            color: #00ff7f;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .form-links a:hover {
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        .form-links p {
+            margin: 10px 0;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .verification-success {
+            text-align: center;
+            display: none;
+        }
+
+        .success-icon {
+            font-size: 5rem;
+            color: #00ff7f;
+            margin-bottom: 20px;
+            animation: successPulse 1.5s ease infinite;
+        }
+
+        @keyframes successPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .success-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #00ff7f;
+            margin-bottom: 15px;
+        }
+
+        .success-message {
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .resend-section {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .resend-timer {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.95rem;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        .timer-count {
+            color: #ff8c00;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        @media (max-width: 480px) {
+            .verification-container {
+                margin: 10px;
+                border-radius: 20px;
+            }
+
+            .verification-header {
+                padding: 30px 20px;
+            }
+
+            .verification-form {
+                padding: 30px 20px;
+            }
+
+            .verification-title {
+                font-size: 2rem;
+            }
+
+            .code-digit {
+                width: 50px;
+                height: 50px;
+                font-size: 1.3rem;
+            }
+
+            .code-input-container {
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="bg-animation"></div>
+
+<div class="verification-container">
+    <div class="verification-header">
+        <div class="verification-icon">
+            <i class="fas fa-envelope-open"></i>
+        </div>
+        <h1 class="verification-title">
+            VERIFY EMAIL
+        </h1>
+        <p class="verification-subtitle">이메일 인증하기</p>
+    </div>
+
+    <div class="verification-form">
+        <div id="error-alert" class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span id="error-message"></span>
+        </div>
+
+        <div id="success-alert" class="alert alert-success">
+            <i class="fas fa-check-circle"></i>
+            <span id="success-message"></span>
+        </div>
+
+        <div id="warning-alert" class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span id="warning-message"></span>
+        </div>
+
+        <div id="verification-form-container">
+            <div class="status-message">
+                <i class="fas fa-paper-plane"></i><br>
+                인증 이메일이 발송되었습니다!<br>
+                받은 메일함을 확인하고 6자리 인증코드를 입력해주세요.
+            </div>
+
+            <div class="email-info">
+                <div class="email-address" id="userEmail" th:text="${email}">your-email@example.com</div>
+                <div class="email-hint">
+                    이메일이 오지 않았다면 스팸함을 확인해주세요
+                </div>
+            </div>
+
+            <form id="verificationForm">
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-key"></i> 인증코드
+                    </label>
+                    <div class="code-input-container">
+                        <input type="text" class="code-digit" maxlength="1" id="digit1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                        <input type="text" class="code-digit" maxlength="1" id="digit2" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                        <input type="text" class="code-digit" maxlength="1" id="digit3" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                        <input type="text" class="code-digit" maxlength="1" id="digit4" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                        <input type="text" class="code-digit" maxlength="1" id="digit5" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                        <input type="text" class="code-digit" maxlength="1" id="digit6" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <span id="verify-spinner" class="spinner" style="display: none;"></span>
+                    <i class="fas fa-shield-check"></i> 인증하기
+                </button>
+            </form>
+
+            <div class="resend-section">
+                <button class="btn btn-secondary" id="resendBtn" onclick="resendCode()">
+                    <i class="fas fa-redo"></i> 코드 재전송
+                </button>
+                <div class="resend-timer" id="resendTimer" style="display: none;">
+                    인증코드 재전송까지 <span class="timer-count" id="timerCount">60</span>초
+                </div>
+            </div>
+        </div>
+
+        <div id="verification-success" class="verification-success">
+            <div class="success-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h2 class="success-title">VERIFICATION COMPLETE!</h2>
+            <p class="success-message">
+                이메일 인증이 완료되었습니다!<br>
+                이제 모든 기능을 사용할 수 있습니다.
+            </p>
+            <button class="btn btn-primary" onclick="goToLogin()">
+                <i class="fas fa-sign-in-alt"></i> 홈으로
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let resendTimer = 60;
+    let timerInterval = null;
+    let isProcessing = false; // 중복 처리 방지
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('resendBtn').style.display = 'block';
+        document.getElementById('resendTimer').style.display = 'none';
+        setupCodeInputs();
+        setupFormSubmission(); // 폼 제출 이벤트를 한 번만 설정
+    });
+
+    // 폼 제출 이벤트를 한 번만 설정
+    function setupFormSubmission() {
+        document.getElementById('verificationForm').addEventListener('submit', handleFormSubmit);
+    }
+
+    // 폼 제출 처리 함수
+    async function handleFormSubmit(e) {
+        e.preventDefault();
+
+        // 이미 처리 중이면 무시
+        if (isProcessing) return;
+
+        const code = getVerificationCode();
+        if (code.length !== 6) {
+            showAlert('error', '6자리 인증코드를 모두 입력해주세요');
+            return;
+        }
+
+        isProcessing = true; // 처리 시작
+
+        const submitButton = e.target.querySelector('button[type="submit"]');
+        const spinner = document.getElementById('verify-spinner');
+
+        submitButton.disabled = true;
+        spinner.style.display = 'inline-block';
+        hideAllAlerts();
+
+        try {
+            const response = await fetch('/api/verify-mail', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    code: code
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                showVerificationSuccess();
+            } else {
+                showAlert('error', result.message || '인증에 실패했습니다');
+                clearCodeInputs();
+            }
+
+        } catch (error) {
+            console.error('인증 오류:', error);
+            showAlert('error', '네트워크 오류가 발생했습니다');
+            clearCodeInputs();
+        } finally {
+            submitButton.disabled = false;
+            spinner.style.display = 'none';
+            isProcessing = false; // 처리 완료
+        }
+    }
+
+    function setupCodeInputs() {
+        const inputs = document.querySelectorAll('.code-digit');
+
+        inputs.forEach((input, index) => {
+            let isComposing = false;
+            let previousValue = '';
+
+            input.addEventListener('focus', function() {
+                previousValue = this.value;
+                setTimeout(() => this.select(), 10);
+            });
+
+            input.addEventListener('compositionstart', function(e) {
+                isComposing = true;
+                e.preventDefault();
+                this.value = previousValue;
+            });
+
+            input.addEventListener('compositionupdate', function(e) {
+                e.preventDefault();
+                this.value = previousValue;
+            });
+
+            input.addEventListener('compositionend', function(e) {
+                isComposing = false;
+                e.preventDefault();
+                this.value = previousValue;
+            });
+
+            input.addEventListener('keypress', function(e) {
+                const charCode = e.which || e.keyCode;
+                if (charCode < 48 || charCode > 57) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+
+            input.addEventListener('keydown', function(e) {
+                const allowedKeys = [
+                    'Backspace', 'Delete', 'Tab', 'Escape', 'Enter',
+                    'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+                    'Home', 'End'
+                ];
+
+                const isNumberKey = (e.key >= '0' && e.key <= '9') ||
+                    (e.keyCode >= 48 && e.keyCode <= 57) ||
+                    (e.keyCode >= 96 && e.keyCode <= 105);
+
+                if ((e.ctrlKey || e.altKey) && !['KeyV', 'KeyC', 'KeyX', 'KeyA'].includes(e.code)) {
+                    e.preventDefault();
+                    return;
+                }
+
+                if (e.key === 'Backspace') {
+                    e.preventDefault();
+                    if (input.value) {
+                        input.value = '';
+                        input.classList.remove('filled');
+                        previousValue = '';
+                    } else if (index > 0) {
+                        inputs[index - 1].focus();
+                        inputs[index - 1].value = '';
+                        inputs[index - 1].classList.remove('filled');
+                    }
+                    return;
+                }
+
+                if (e.key === 'Delete') {
+                    e.preventDefault();
+                    input.value = '';
+                    input.classList.remove('filled');
+                    previousValue = '';
+                    return;
+                }
+
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (!isProcessing) { // 처리 중이 아닐 때만 제출
+                        document.getElementById('verificationForm').dispatchEvent(new Event('submit'));
+                    }
+                    return;
+                }
+
+                if (!allowedKeys.includes(e.key) && !isNumberKey) {
+                    e.preventDefault();
+                    return;
+                }
+
+                if (isNumberKey) {
+                    e.preventDefault();
+                    input.value = e.key;
+                    input.classList.add('filled');
+                    previousValue = e.key;
+
+                    if (index < inputs.length - 1) {
+                        setTimeout(() => inputs[index + 1].focus(), 10);
+                    }
+
+                    checkAutoSubmit();
+                }
+            });
+
+            input.addEventListener('input', function(e) {
+                if (isComposing) {
+                    e.preventDefault();
+                    this.value = previousValue;
+                    return;
+                }
+
+                const value = e.target.value;
+                const numbersOnly = value.replace(/[^\d]/g, '');
+
+                if (numbersOnly !== value) {
+                    e.target.value = numbersOnly.slice(0, 1);
+                }
+
+                if (e.target.value.length > 1) {
+                    e.target.value = e.target.value.slice(0, 1);
+                }
+
+                const finalValue = e.target.value;
+
+                if (!/^\d?$/.test(finalValue)) {
+                    e.target.value = previousValue;
+                    return;
+                }
+
+                if (finalValue) {
+                    e.target.classList.add('filled');
+                    previousValue = finalValue;
+                } else {
+                    e.target.classList.remove('filled');
+                    previousValue = '';
+                }
+            });
+
+            input.addEventListener('paste', function(e) {
+                e.preventDefault();
+                const paste = (e.clipboardData || window.clipboardData).getData('text');
+                const digits = paste.replace(/\D/g, '').slice(0, 6);
+
+                digits.split('').forEach((digit, i) => {
+                    const targetIndex = index + i;
+                    if (targetIndex < inputs.length) {
+                        inputs[targetIndex].value = digit;
+                        inputs[targetIndex].classList.add('filled');
+                    }
+                });
+
+                const lastFilledIndex = Math.min(index + digits.length - 1, inputs.length - 1);
+                if (lastFilledIndex >= 0) {
+                    inputs[lastFilledIndex].focus();
+                }
+
+                checkAutoSubmit();
+            });
+
+            input.addEventListener('beforeinput', function(e) {
+                if (e.inputType === 'insertCompositionText' ||
+                    e.inputType === 'insertText') {
+                    const data = e.data;
+                    if (data && !/^\d$/.test(data)) {
+                        e.preventDefault();
+                        return false;
+                    }
+                }
+            });
+        });
+    }
+
+    function checkAutoSubmit() {
+        const code = getVerificationCode();
+        if (code.length === 6 && !isProcessing) { // 처리 중이 아닐 때만 자동 제출
+            setTimeout(() => {
+                if (!isProcessing) { // 다시 한 번 확인
+                    document.getElementById('verificationForm').dispatchEvent(new Event('submit'));
+                }
+            }, 300);
+        }
+    }
+
+    function getVerificationCode() {
+        const inputs = document.querySelectorAll('.code-digit');
+        return Array.from(inputs).map(input => input.value).join('');
+    }
+
+    function resendCode() {
+        document.getElementById('resendBtn').style.display = 'none';
+        document.getElementById('resendTimer').style.display = 'block';
+        resendTimer = 60;
+        document.getElementById('timerCount').textContent = resendTimer
+
+        clearCodeInputs();
+        showAlert('success', '인증코드가 재전송되었습니다');
+
+        timerInterval = setInterval(() => {
+            resendTimer--;
+            document.getElementById('timerCount').textContent = resendTimer;
+            if (resendTimer <= 0) {
+                clearInterval(timerInterval);
+                document.getElementById('resendTimer').style.display = 'none';
+                document.getElementById('resendBtn').style.display = 'block';
+                resendTimer = 60;
+            }
+        }, 1000);
+
+        fetch('/api/resend-verification-code', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }).catch(error => {
+            console.error('재전송 오류:', error);
+            // 에러가 발생해도 사용자에게는 알리지 않음
+        });
+    }
+
+    function showVerificationSuccess() {
+        // 성공 시 더 이상의 처리를 막기 위해 플래그 설정
+        isProcessing = true;
+
+        // 모든 알림 즉시 숨기기
+        hideAllAlerts();
+
+        document.getElementById('verification-form-container').style.display = 'none';
+        document.getElementById('verification-success').style.display = 'block';
+    }
+
+    function goToLogin() {
+        window.location.href = '/';
+    }
+
+    function clearCodeInputs() {
+        const inputs = document.querySelectorAll('.code-digit');
+        inputs.forEach(input => {
+            input.value = '';
+            input.classList.remove('filled');
+        });
+        inputs[0].focus();
+    }
+
+    function showAlert(type, message) {
+        hideAllAlerts();
+
+        const alertElement = document.getElementById(type + '-alert');
+        const messageElement = document.getElementById(type + '-message');
+
+        messageElement.textContent = message;
+        alertElement.classList.add('show');
+
+        setTimeout(() => {
+            alertElement.classList.remove('show');
+        }, 5000);
+    }
+
+    function hideAllAlerts() {
+        document.querySelectorAll('.alert').forEach(alert => {
+            alert.classList.remove('show');
+        });
+    }
+
+    document.addEventListener('mousemove', (e) => {
+        const bg = document.querySelector('.bg-animation');
+        const x = e.clientX / window.innerWidth;
+        const y = e.clientY / window.innerHeight;
+
+        bg.style.background = `
+            radial-gradient(circle at ${x * 100}% ${y * 100}%,
+            rgba(0, 255, 127, 0.15) 0%,
+            rgba(0, 255, 255, 0.1) 30%,
+            transparent 70%),
+            linear-gradient(45deg, #0a0a0a, #1a1a2e, #16213e, #0f3460)
+        `;
+    });
+</script>
+</body>
+</html>

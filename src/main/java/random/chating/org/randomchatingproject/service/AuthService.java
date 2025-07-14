@@ -101,12 +101,6 @@ public class AuthService {
                     // 개인정보 보호 설정 기본값
                     .showOnlineStatus(true) // 온라인 상태 표시 ON
                     .profileVisible(true) // 프로필 공개 ON
-                    // 매칭 설정 기본값
-                    .autoMatching(true) // 자동 매칭 ON
-                    .sameRegionOnly(false) // 같은 지역만 매칭 OFF
-                    // 보안 설정 기본값
-                    .blockInappropriateContent(true) // 부적절한 콘텐츠 차단 ON
-                    .autoReportSpam(true) // 스팸 자동 신고 ON
                     .build();
 
             userSettingsRepository.save(defaultSettings);

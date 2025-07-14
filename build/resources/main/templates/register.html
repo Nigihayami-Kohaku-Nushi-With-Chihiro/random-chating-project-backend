@@ -253,8 +253,8 @@
         }
 
         .checkmark {
-            width: 22px;
-            height: 22px;
+            width: 28px;  /* 기존: 22px */
+            height: 28px; /* 기존: 22px */
             border: 2px solid rgba(255, 0, 128, 0.5);
             border-radius: 5px;
             background: transparent;
@@ -276,7 +276,7 @@
             top: 50%;
             transform: translate(-50%, -50%);
             color: #000;
-            font-size: 12px;
+            font-size: 16px;  /* 기존: 12px */
         }
 
         .checkbox-label {
@@ -453,9 +453,9 @@
 <div class="register-container">
     <div class="register-header">
         <h1 class="register-title">
-            <i class="fas fa-user-plus"></i> REGISTER
+            <i class="fas fa-user-plus"></i> 회원가입
         </h1>
-        <p class="register-subtitle">JOIN THE LEGEND COMMUNITY</p>
+        <p class="register-subtitle">랜덤채팅에 지금 합류하세요</p>
     </div>
 
     <div class="register-form">
@@ -473,68 +473,68 @@
         <form id="registerForm">
             <div class="form-group">
                 <label for="username" class="form-label">
-                    <i class="fas fa-user"></i> USERNAME
+                    <i class="fas fa-user"></i> 사용자 이름
                 </label>
                 <input type="text"
                        class="form-input"
                        id="username"
                        name="username"
-                       placeholder="Choose your legend name"
+                       placeholder="전설 이름을 정하세요"
                        required>
             </div>
 
             <div class="form-group">
                 <label for="email" class="form-label">
-                    <i class="fas fa-envelope"></i> EMAIL
+                    <i class="fas fa-envelope"></i> 이메일
                 </label>
                 <input type="email"
                        class="form-input"
                        id="email"
                        name="email"
-                       placeholder="Enter your email address"
+                       placeholder="이메일 주소를 입력하세요"
                        required>
             </div>
 
             <div class="form-group">
                 <label for="password" class="form-label">
-                    <i class="fas fa-lock"></i> PASSWORD
+                    <i class="fas fa-lock"></i> 비밀번호
                 </label>
                 <input type="password"
                        class="form-input"
                        id="password"
                        name="password"
-                       placeholder="Create a strong password"
+                       placeholder="강력한 비밀번호를 만들어주세요"
                        required>
             </div>
 
             <div class="form-group">
                 <label for="confirmPassword" class="form-label">
-                    <i class="fas fa-shield-alt"></i> CONFIRM PASSWORD
+                    <i class="fas fa-shield-alt"></i> 비밀번호 확인
                 </label>
                 <input type="password"
                        class="form-input"
                        id="confirmPassword"
                        name="confirmPassword"
-                       placeholder="Confirm your password"
+                       placeholder="비밀번호를 다시 입력하세요"
                        required>
             </div>
 
             <div class="form-group">
                 <label class="form-label">
-                    <i class="fas fa-venus-mars"></i> GENDER
+                    <i class="fas fa-venus-mars"></i> 성별
                 </label>
                 <div class="gender-selection">
                     <div class="gender-option" data-gender="MALE">
                         <div class="gender-icon">
                             <i class="fas fa-mars"></i>
                         </div>
-                        <div class="gender-label">MALE</div>
+                        <div class="gender-label">남성</div>
                     </div>
                     <div class="gender-option" data-gender="FEMALE">
                         <div class="gender-icon">
                             <i class="fas fa-venus"></i>
                         </div>
-                        <div class="gender-label">FEMALE</div>
+                        <div class="gender-label">여성</div>
                     </div>
                 </div>
                 <input type="hidden" id="gender" name="gender" required>
@@ -542,7 +542,7 @@
 
             <div class="form-group">
                 <label for="age" class="form-label">
-                    <i class="fas fa-calendar-alt"></i> AGE
+                    <i class="fas fa-calendar-alt"></i> 나이
                 </label>
                 <input type="number"
                        class="form-input"
@@ -550,7 +550,7 @@
                        name="age"
                        min="18"
                        max="100"
-                       placeholder="Enter your age (18+)"
+                       placeholder="나이를 입력하세요 (18세 이상)"
                        required>
             </div>
 
@@ -560,27 +560,28 @@
                     <span class="checkmark"></span>
                 </label>
                 <label for="agreeTerms" class="checkbox-label">
-                    I AGREE TO THE <a href="#">TERMS OF SERVICE</a> AND
-                    <a href="#">PRIVACY POLICY</a>. I'M READY TO BECOME A LEGEND.
+                    <a href="#">이용약관</a> 및 <a href="#">개인정보 처리방침</a>에 동의합니다.
+                    전설이 될 준비가 되었습니다.
                 </label>
             </div>
 
             <button type="submit" class="btn btn-primary">
                 <span id="register-spinner" class="spinner" style="display: none;"></span>
-                <i class="fas fa-rocket"></i> CREATE LEGEND ACCOUNT
+                <i class="fas fa-rocket"></i> 계정 만들기
             </button>
         </form>
 
         <div class="form-links">
-            <p>ALREADY HAVE AN ACCOUNT?
-                <a href="/login">LOGIN NOW</a>
+            <p>이미 계정이 있으신가요?
+                <a href="/login">지금 로그인하기</a>
             </p>
             <a href="/">
-                <i class="fas fa-arrow-left"></i> BACK TO HOME
+                <i class="fas fa-arrow-left"></i> 홈으로 돌아가기
             </a>
         </div>
     </div>
 </div>
+
 
 <script>
     let selectedGender = null;

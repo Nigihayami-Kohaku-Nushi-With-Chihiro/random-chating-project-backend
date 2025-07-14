@@ -56,10 +56,6 @@ public class SettingsService {
                             .marketingNotifications(false)
                             .showOnlineStatus(true)
                             .profileVisible(true)
-                            .autoMatching(true)
-                            .sameRegionOnly(false)
-                            .blockInappropriateContent(true)
-                            .autoReportSpam(true)
                             .build();
                     return userSettingsRepository.save(newSettings);
                 });

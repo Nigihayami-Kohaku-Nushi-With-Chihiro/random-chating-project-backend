@@ -47,24 +47,6 @@ public class UserSettings {
     @Builder.Default
     private Boolean profileVisible = true;
 
-    // 매칭 설정
-    @Column(name = "auto_matching")
-    @Builder.Default
-    private Boolean autoMatching = true;
-
-    @Column(name = "same_region_only")
-    @Builder.Default
-    private Boolean sameRegionOnly = false;
-
-    // 차단 및 신고 설정
-    @Column(name = "block_inappropriate_content")
-    @Builder.Default
-    private Boolean blockInappropriateContent = true;
-
-    @Column(name = "auto_report_spam")
-    @Builder.Default
-    private Boolean autoReportSpam = true;
-
     // 메타데이터
     @Column(name = "created_at")
     private LocalDateTime createdAt;

@@ -56,7 +56,7 @@ public class SecurityConfig {
                             .requestMatchers("/ws/**").permitAll()
 
                             // 프로필 및 설정 페이지 - 로그인 필요
-                            .requestMatchers("/profile", "/settings").hasAnyRole("USER", "ADMIN")
+                            .requestMatchers("/profile", "/settings", "/verify-email", "/api/verify-mail", "/api/verify-mail").hasAnyRole("USER", "ADMIN")
 
                             // 프로필 관련 API - 로그인 필요
                             .requestMatchers("/api/profile/**").hasAnyRole("USER", "ADMIN")

@@ -374,9 +374,9 @@
 <div class="login-container">
     <div class="login-header">
         <h1 class="login-title">
-            <i class="fas fa-bolt"></i> LOGIN
+            <i class="fas fa-bolt"></i> 로그인
         </h1>
-        <p class="login-subtitle">WELCOME BACK, LEGEND</p>
+        <p class="login-subtitle">다시 오신 것을 환영합니다, 회원님</p>
     </div>
 
     <div class="login-form">
@@ -394,25 +394,25 @@
         <form id="loginForm">
             <div class="form-group">
                 <label for="username" class="form-label">
-                    <i class="fas fa-user"></i> USERNAME / EMAIL
+                    <i class="fas fa-user"></i> 사용자 이름 / 이메일
                 </label>
                 <input type="text"
                        class="form-input"
                        id="username"
                        name="username"
-                       placeholder="Enter your username or email"
+                       placeholder="사용자 이름 또는 이메일을 입력하세요"
                        required>
             </div>
 
             <div class="form-group">
                 <label for="password" class="form-label">
-                    <i class="fas fa-lock"></i> PASSWORD
+                    <i class="fas fa-lock"></i> 비밀번호
                 </label>
                 <input type="password"
                        class="form-input"
                        id="password"
                        name="password"
-                       placeholder="Enter your password"
+                       placeholder="비밀번호를 입력하세요"
                        required>
             </div>
 
@@ -422,27 +422,26 @@
                     <span class="checkmark"></span>
                 </label>
                 <label for="rememberMe" class="checkbox-label">
-                    REMEMBER ME
+                    로그인 상태 유지
                 </label>
             </div>
 
             <button type="submit" class="btn btn-primary">
                 <span id="login-spinner" class="spinner" style="display: none;"></span>
-                <i class="fas fa-rocket"></i> ENTER THE MATRIX
+                <i class="fas fa-rocket"></i> 로그인
             </button>
         </form>
 
         <div class="form-links">
-            <p>DON'T HAVE AN ACCOUNT?
-                <a href="/register">CREATE ONE NOW</a>
+            <p>계정이 없으신가요?
+                <a href="/register">지금 가입하기</a>
             </p>
             <a href="/">
-                <i class="fas fa-arrow-left"></i> BACK TO HOME
+                <i class="fas fa-arrow-left"></i> 홈으로 돌아가기
             </a>
         </div>
     </div>
 </div>
-
 <script>
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
         e.preventDefault();

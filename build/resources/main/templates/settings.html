@@ -215,6 +215,10 @@
             font-size: 1.2rem;
             font-weight: 600;
             color: #ff8c00;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
         .status-badge {
@@ -238,6 +242,49 @@
             background: rgba(255, 140, 0, 0.2);
             color: #ff8c00;
             border: 1px solid rgba(255, 140, 0, 0.3);
+        }
+
+        /* 인증하기 버튼 */
+        .verify-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 15px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: linear-gradient(45deg, #00ff7f, #00ffff);
+            color: #000;
+            margin-left: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .verify-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 255, 127, 0.4);
+        }
+
+        .verify-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .verify-btn:hover::before {
+            left: 100%;
         }
 
         /* 설정 옵션 */
@@ -536,6 +583,17 @@
             .toggle-switch {
                 margin-left: 0;
             }
+
+            .info-value {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .verify-btn {
+                margin-left: 0;
+                margin-top: 5px;
+            }
         }
     </style>
 </head>
@@ -546,17 +604,17 @@
 <header class="header">
     <div class="nav-container">
         <a href="/" class="logo">
-            <i class="fas fa-bolt"></i> RANDOM CHAT
+            <i class="fas fa-bolt"></i> 랜덤 채팅
         </a>
         <nav class="nav-menu">
             <a href="/" class="nav-item">
-                <i class="fas fa-home"></i> HOME
+                <i class="fas fa-home"></i> 홈
             </a>
             <a href="/profile" class="nav-item">
-                <i class="fas fa-user"></i> PROFILE
+                <i class="fas fa-user"></i> 프로필
             </a>
             <a href="/settings" class="nav-item">
-                <i class="fas fa-cog"></i> SETTINGS
+                <i class="fas fa-cog"></i> 설정
             </a>
         </nav>
     </div>
@@ -567,9 +625,9 @@
     <div class="settings-header">
         <h1 class="settings-title">
             <i class="fas fa-cog"></i><br>
-            LEGEND SETTINGS
+            설정 관리
         </h1>
-        <p class="settings-subtitle">CONFIGURE YOUR LEGEND EXPERIENCE</p>
+        <p class="settings-subtitle">나만의 랜덤채팅 환경을 설정해보세요</p>
     </div>
 
     <!-- 알림 -->
@@ -588,75 +646,80 @@
         <span id="warning-message"></span>
     </div>
 
-    <!-- 계정 정보 섹션 -->
+    <!-- 계정 정보 -->
     <div class="settings-section">
         <h2 class="section-title">
             <i class="fas fa-user-circle"></i>
-            ACCOUNT INFORMATION
+            내 계정 정보
         </h2>
         <p class="section-description">
-            Your basic account information and status.
+            현재 사용 중인 계정의 기본 정보입니다.
         </p>
 
         <div class="account-info">
             <div class="info-card">
-                <div class="info-label">USERNAME</div>
+                <div class="info-label">사용자명</div>
                 <div class="info-value" th:text="${username}">LEGEND_USER</div>
             </div>
             <div class="info-card">
-                <div class="info-label">EMAIL</div>
+                <div class="info-label">이메일</div>
                 <div class="info-value" th:text="${email}">legend@email.com</div>
             </div>
             <div class="info-card">
-                <div class="info-label">ACCOUNT STATUS</div>
+                <div class="info-label">인증 상태</div>
                 <div class="info-value">
-                        <span th:if="${verified}" class="status-badge status-active">
-                            <i class="fas fa-check-circle"></i> VERIFIED
+                    <span th:if="${verified}" class="status-badge status-active">
+                        <i class="fas fa-check-circle"></i> 인증됨
+                    </span>
+                    <div th:unless="${verified}" style="display: flex; align-items: center; gap: 10px;">
+                        <span class="status-badge status-pending">
+                            <i class="fas fa-clock"></i> 대기 중
                         </span>
-                    <span th:unless="${verified}" class="status-badge status-pending">
-                            <i class="fas fa-clock"></i> PENDING
-                        </span>
+                        <a href="/verify-mail" class="status-badge" style="background: linear-gradient(45deg, #00ff7f, #00ffff); color: #000; text-decoration: none;">
+                            <i class="fas fa-envelope-open"></i> 인증하기
+                        </a>
+                    </div>
                 </div>
             </div>
             <div class="info-card">
-                <div class="info-label">JOIN DATE</div>
+                <div class="info-label">가입일</div>
                 <div class="info-value">2024.01.15</div>
             </div>
         </div>
     </div>
 
-    <!-- 보안 설정 섹션 -->
+    <!-- 보안 설정 -->
     <div class="settings-section">
         <h2 class="section-title">
             <i class="fas fa-shield-alt"></i>
-            SECURITY SETTINGS
+            보안 설정
         </h2>
         <p class="section-description">
-            Manage your password and account security.
+            비밀번호 및 계정 보안을 관리할 수 있습니다.
         </p>
 
         <button class="btn btn-primary" onclick="openPasswordModal()">
-            <i class="fas fa-key"></i> CHANGE PASSWORD
+            <i class="fas fa-key"></i> 비밀번호 변경
         </button>
         <button class="btn btn-secondary" onclick="openEmailModal()">
-            <i class="fas fa-envelope"></i> CHANGE EMAIL
+            <i class="fas fa-envelope"></i> 이메일 변경
         </button>
     </div>
 
-    <!-- 알림 설정 섹션 -->
+    <!-- 알림 설정 -->
     <div class="settings-section">
         <h2 class="section-title">
             <i class="fas fa-bell"></i>
-            NOTIFICATION SETTINGS
+            알림 설정
         </h2>
         <p class="section-description">
-            Control how and when you receive notifications.
+            어떤 알림을 받을지 설정할 수 있습니다.
         </p>
 
         <div class="setting-item">
             <div class="setting-info">
-                <div class="setting-name">EMAIL NOTIFICATIONS</div>
-                <div class="setting-desc">Receive important updates via email</div>
+                <div class="setting-name">이메일 알림</div>
+                <div class="setting-desc">중요한 업데이트를 이메일로 받기</div>
             </div>
             <label class="toggle-switch">
                 <input type="checkbox" id="emailNotifications" th:checked="${emailNotifications}">
@@ -666,8 +729,8 @@
 
         <div class="setting-item">
             <div class="setting-info">
-                <div class="setting-name">PUSH NOTIFICATIONS</div>
-                <div class="setting-desc">Get instant notifications in your browser</div>
+                <div class="setting-name">푸시 알림</div>
+                <div class="setting-desc">브라우저로 실시간 알림 받기</div>
             </div>
             <label class="toggle-switch">
                 <input type="checkbox" id="pushNotifications" th:checked="${pushNotifications}">
@@ -677,8 +740,8 @@
 
         <div class="setting-item">
             <div class="setting-info">
-                <div class="setting-name">MARKETING NOTIFICATIONS</div>
-                <div class="setting-desc">Receive news and promotional content</div>
+                <div class="setting-name">마케팅 알림</div>
+                <div class="setting-desc">소식과 프로모션 정보 받기</div>
             </div>
             <label class="toggle-switch">
                 <input type="checkbox" id="marketingNotifications" th:checked="${marketingNotifications}">
@@ -687,20 +750,20 @@
         </div>
     </div>
 
-    <!-- 개인정보 보호 설정 섹션 -->
+    <!-- 개인정보 보호 -->
     <div class="settings-section">
         <h2 class="section-title">
             <i class="fas fa-user-shield"></i>
-            PRIVACY SETTINGS
+            개인정보 보호
         </h2>
         <p class="section-description">
-            Control your privacy and visibility settings.
+            다른 사용자에게 보여지는 정보를 설정할 수 있습니다.
         </p>
 
         <div class="setting-item">
             <div class="setting-info">
-                <div class="setting-name">SHOW ONLINE STATUS</div>
-                <div class="setting-desc">Let others see when you're online</div>
+                <div class="setting-name">온라인 상태 표시</div>
+                <div class="setting-desc">접속 여부를 다른 사용자에게 표시</div>
             </div>
             <label class="toggle-switch">
                 <input type="checkbox" id="showOnlineStatus" th:checked="${showOnlineStatus}">
@@ -710,8 +773,8 @@
 
         <div class="setting-item">
             <div class="setting-info">
-                <div class="setting-name">PROFILE VISIBILITY</div>
-                <div class="setting-desc">Make your profile visible to other users</div>
+                <div class="setting-name">프로필 공개</div>
+                <div class="setting-desc">내 프로필을 다른 사용자에게 공개</div>
             </div>
             <label class="toggle-switch">
                 <input type="checkbox" id="profileVisible" th:checked="${profileVisible}">
@@ -720,46 +783,28 @@
         </div>
     </div>
 
-    <!-- 데이터 관리 섹션 -->
-    <div class="settings-section">
-        <h2 class="section-title">
-            <i class="fas fa-database"></i>
-            DATA MANAGEMENT
-        </h2>
-        <p class="section-description">
-            Manage your personal data and chat history.
-        </p>
-
-        <button class="btn btn-secondary" onclick="requestDataDownload()">
-            <i class="fas fa-download"></i> DOWNLOAD MY DATA
-        </button>
-        <button class="btn btn-secondary" onclick="clearChatHistory()">
-            <i class="fas fa-trash-alt"></i> CLEAR CHAT HISTORY
-        </button>
-    </div>
-
     <!-- 위험 구역 -->
     <div class="settings-section danger-zone">
         <h2 class="section-title">
             <i class="fas fa-exclamation-triangle"></i>
-            DANGER ZONE
+            위험 구역
         </h2>
         <p class="section-description">
-            Irreversible actions that affect your account permanently.
+            계정에 심각한 영향을 주는 조치입니다. 신중히 선택하세요.
         </p>
 
         <button class="btn btn-danger" onclick="deactivateAccount()">
-            <i class="fas fa-pause-circle"></i> DEACTIVATE ACCOUNT
+            <i class="fas fa-pause-circle"></i> 계정 비활성화
         </button>
         <button class="btn btn-danger" onclick="deleteAccount()">
-            <i class="fas fa-trash"></i> DELETE ACCOUNT
+            <i class="fas fa-trash"></i> 계정 삭제
         </button>
     </div>
 
-    <!-- 설정 저장 버튼 -->
+    <!-- 저장 버튼 -->
     <div style="text-align: center; margin: 40px 0;">
         <button class="btn btn-primary" onclick="saveSettings()" style="font-size: 1.2rem; padding: 18px 40px;">
-            <i class="fas fa-save"></i> SAVE ALL SETTINGS
+            <i class="fas fa-save"></i> 모든 설정 저장
         </button>
     </div>
 </main>
@@ -770,35 +815,25 @@
         <span class="modal-close" onclick="closeModal('passwordModal')">&times;</span>
         <div class="modal-header">
             <h3 class="modal-title">
-                <i class="fas fa-key"></i> CHANGE PASSWORD
+                <i class="fas fa-key"></i> 비밀번호 변경
             </h3>
-            <p>Enter your current and new password</p>
         </div>
-
         <form id="passwordForm">
             <div class="form-group">
-                <label for="currentPassword" class="form-label">CURRENT PASSWORD</label>
+                <label class="form-label">현재 비밀번호</label>
                 <input type="password" class="form-input" id="currentPassword" required>
             </div>
-
             <div class="form-group">
-                <label for="newPassword" class="form-label">NEW PASSWORD</label>
+                <label class="form-label">새 비밀번호</label>
                 <input type="password" class="form-input" id="newPassword" required>
             </div>
-
             <div class="form-group">
-                <label for="confirmNewPassword" class="form-label">CONFIRM NEW PASSWORD</label>
+                <label class="form-label">새 비밀번호 확인</label>
                 <input type="password" class="form-input" id="confirmNewPassword" required>
             </div>
-
-            <div style="text-align: center; margin-top: 20px;">
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save"></i> CHANGE PASSWORD
-                </button>
-                <button type="button" class="btn btn-secondary" onclick="closeModal('passwordModal')">
-                    <i class="fas fa-times"></i> CANCEL
-                </button>
-            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-check"></i> 변경하기
+            </button>
         </form>
     </div>
 </div>
@@ -809,77 +844,45 @@
         <span class="modal-close" onclick="closeModal('emailModal')">&times;</span>
         <div class="modal-header">
             <h3 class="modal-title">
-                <i class="fas fa-envelope"></i> CHANGE EMAIL
+                <i class="fas fa-envelope"></i> 이메일 변경
             </h3>
-            <p>Enter your new email address and current password</p>
         </div>
-
         <form id="emailForm">
             <div class="form-group">
-                <label for="newEmail" class="form-label">NEW EMAIL</label>
+                <label class="form-label">새 이메일 주소</label>
                 <input type="email" class="form-input" id="newEmail" required>
             </div>
-
             <div class="form-group">
-                <label for="emailPassword" class="form-label">CURRENT PASSWORD</label>
+                <label class="form-label">비밀번호 확인</label>
                 <input type="password" class="form-input" id="emailPassword" required>
             </div>
-
-            <div style="text-align: center; margin-top: 20px;">
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-paper-plane"></i> SEND VERIFICATION
-                </button>
-                <button type="button" class="btn btn-secondary" onclick="closeModal('emailModal')">
-                    <i class="fas fa-times"></i> CANCEL
-                </button>
-            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-paper-plane"></i> 인증 이메일 발송
+            </button>
         </form>
     </div>
 </div>
 
-<!-- 계정 삭제 확인 모달 -->
+<!-- 계정 삭제 모달 -->
 <div id="deleteModal" class="modal">
     <div class="modal-content">
         <span class="modal-close" onclick="closeModal('deleteModal')">&times;</span>
         <div class="modal-header">
             <h3 class="modal-title" style="color: #ff4444;">
-                <i class="fas fa-skull-crossbones"></i> DELETE ACCOUNT
+                <i class="fas fa-trash"></i> 계정 삭제
             </h3>
-            <p style="color: #ff4444;">This action cannot be undone!</p>
-        </div>
-
-        <div style="background: rgba(255, 68, 68, 0.1); padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid rgba(255, 68, 68, 0.3);">
-            <p style="color: #ff4444; font-weight: 600; margin-bottom: 10px;">
-                <i class="fas fa-exclamation-triangle"></i> WARNING
+            <p style="color: rgba(255, 255, 255, 0.7); margin-top: 10px;">
+                정말로 계정을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
             </p>
-            <p style="color: rgba(255, 255, 255, 0.8); font-size: 0.9rem;">
-                Deleting your account will permanently remove:
-            </p>
-            <ul style="color: rgba(255, 255, 255, 0.7); margin: 10px 0 0 20px; font-size: 0.9rem;">
-                <li>Your profile and all personal information</li>
-                <li>All chat history and messages</li>
-                <li>Account settings and preferences</li>
-                <li>Any saved data or statistics</li>
-            </ul>
         </div>
-
         <form id="deleteForm">
             <div class="form-group">
-                <label for="deletePassword" class="form-label" style="color: #ff4444;">
-                    ENTER PASSWORD TO CONFIRM
-                </label>
-                <input type="password" class="form-input" id="deletePassword" required
-                       style="border-color: rgba(255, 68, 68, 0.5);">
+                <label class="form-label">비밀번호 확인</label>
+                <input type="password" class="form-input" id="deletePassword" placeholder="계정 삭제를 위해 비밀번호를 입력하세요" required>
             </div>
-
-            <div style="text-align: center; margin-top: 20px;">
-                <button type="submit" class="btn btn-danger">
-                    <i class="fas fa-skull"></i> DELETE FOREVER
-                </button>
-                <button type="button" class="btn btn-secondary" onclick="closeModal('deleteModal')">
-                    <i class="fas fa-shield-alt"></i> KEEP ACCOUNT
-                </button>
-            </div>
+            <button type="submit" class="btn btn-danger">
+                <i class="fas fa-trash"></i> 영구 삭제
+            </button>
         </form>
     </div>
 </div>
@@ -918,13 +921,22 @@
     // 이벤트 리스너 초기화
     function initializeEventListeners() {
         // 비밀번호 변경 폼
-        document.getElementById('passwordForm').addEventListener('submit', changePassword);
+        const passwordForm = document.getElementById('passwordForm');
+        if (passwordForm) {
+            passwordForm.addEventListener('submit', changePassword);
+        }
 
         // 이메일 변경 폼
-        document.getElementById('emailForm').addEventListener('submit', changeEmail);
+        const emailForm = document.getElementById('emailForm');
+        if (emailForm) {
+            emailForm.addEventListener('submit', changeEmail);
+        }
 
         // 계정 삭제 폼
-        document.getElementById('deleteForm').addEventListener('submit', confirmDeleteAccount);
+        const deleteForm = document.getElementById('deleteForm');
+        if (deleteForm) {
+            deleteForm.addEventListener('submit', confirmDeleteAccount);
+        }
 
         // 모달 외부 클릭 시 닫기
         window.addEventListener('click', function(event) {

@@ -187,6 +187,18 @@
             max-width: 70%;
             display: flex;
             gap: 12px;
+            animation: messageSlide 0.3s ease;
+        }
+
+        @keyframes messageSlide {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .message-avatar {
@@ -470,7 +482,7 @@
     </div>
 
     <div class="chat-actions">
-        <button class="btn btn-danger" onclick="showEndChatModal()">
+        <button class="btn btn-danger" id="endChatBtn">
             <i class="fas fa-sign-out-alt"></i> 연결 끊기
         </button>
     </div>
@@ -529,12 +541,19 @@
 </div>
 
 <script>
-    // 전역 변수 - 최소한으로
+    // chat.html의 완전한 JavaScript 코드
+
+    // 전역 변수
     let stompClient = null;
     let isConnected = false;
     let roomId = '';
     let username = 'User';
     let userAvatar = 'U';
+    let isReconnecting = false;
+    let heartbeatInterval = null;
+    let messageQueue = []; // 연결 끊김 시 메시지 큐
+    let reconnectAttempts = 0;
+    let maxReconnectAttempts = 5;
 
     // 페이지 로드 시 초기화
     document.addEventListener('DOMContentLoaded', function() {
@@ -545,6 +564,14 @@
         roomId = pathParts[pathParts.length - 1];
         console.log('roomId:', roomId);
 
+        // roomId 유효성 검사
+        if (!roomId || roomId === 'chat') {
+            console.error('유효하지 않은 roomId');
+            alert('유효하지 않은 채팅방입니다.');
+            window.location.href = '/';
+            return;
+        }
+
         // 사용자 정보 가져오기
         fetchUserInfo().then(() => {
             // WebSocket 연결
@@ -553,7 +580,18 @@
             setupMessageInput();
             // 스크롤
             scrollToBottom();
+            // 하트비트 시작
+            startHeartbeat();
+            // 연결 상태 표시기 생성
+            createConnectionStatusIndicator();
+        }).catch(error => {
+            console.error('초기화 실패:', error);
+            alert('채팅 초기화에 실패했습니다.');
+            window.location.href = '/';
         });
+
+        // 페이지 언로드 감지 (브라우저 닫기, 새로고침 등)
+        setupPageUnloadHandlers();
     });
 
     // 사용자 정보 가져오기
@@ -566,20 +604,44 @@
                     username = userData.username;
                     userAvatar = userData.username.substring(0, 1).toUpperCase();
                     console.log('사용자 정보:', {username, userAvatar});
+                    return;
                 }
             }
+            throw new Error('사용자 정보를 가져올 수 없습니다');
         } catch (error) {
             console.error('사용자 정보 가져오기 실패:', error);
+            // 임시 사용자 정보 생성
+            username = 'User' + Math.floor(Math.random() * 1000);
+            userAvatar = username.substring(0, 1).toUpperCase();
+            console.warn('임시 사용자 정보 사용:', {username, userAvatar});
         }
     }
 
     // WebSocket 연결
     function connectWebSocket() {
-        console.log('WebSocket 연결 시도');
+        console.log('WebSocket 연결 시도...');
+
+        // 이전 연결 정리
+        if (stompClient && stompClient.connected) {
+            try {
+                stompClient.disconnect();
+            } catch (error) {
+                console.warn('이전 연결 정리 실패:', error);
+            }
+        }
 
         const socket = new SockJS('/ws');
         stompClient = Stomp.over(socket);
-        stompClient.debug = null;
+        stompClient.debug = null; // 디버그 로그 비활성화
+
+        // 연결 타임아웃 설정
+        const connectionTimeout = setTimeout(() => {
+            console.error('WebSocket 연결 타임아웃');
+            if (!isConnected) {
+                socket.close();
+                handleConnectionFailure();
+            }
+        }, 10000); // 10초
 
         // 쿠키에서 토큰 가져오기
         const cookies = document.cookie.split(';');
@@ -595,39 +657,513 @@
         const headers = {};
         if (token) {
             headers['Authorization'] = 'Bearer ' + token;
+            console.log('인증 토큰 설정됨');
+        } else {
+            console.warn('인증 토큰이 없습니다');
         }
 
+        // WebSocket 연결
         stompClient.connect(headers, function(frame) {
-            console.log('WebSocket 연결 성공');
+            clearTimeout(connectionTimeout);
+            console.log('WebSocket 연결 성공:', frame);
             isConnected = true;
+            isReconnecting = false;
+            reconnectAttempts = 0;
 
-            // 채팅방 구독
-            stompClient.subscribe('/topic/chat/' + roomId, function(message) {
-                const messageData = JSON.parse(message.body);
-                addMessageToChat(messageData);
-            });
-
-            // 개인 메시지 구독
-            stompClient.subscribe('/user/queue/chat', function(message) {
-                const messageData = JSON.parse(message.body);
-                handlePersonalMessage(messageData);
-            });
+            // 구독 설정
+            setupSubscriptions();
 
             // 입장 알림
             stompClient.send('/app/chat.addUser', {}, JSON.stringify({
-                roomId: roomId
+                roomId: roomId,
+                username: username
             }));
 
+            // 연결 상태 UI 업데이트
+            updateConnectionStatus(true);
+
+            // 대기 중인 메시지 전송
+            sendQueuedMessages();
+
+            console.log('WebSocket 초기화 완료');
+
         }, function(error) {
+            clearTimeout(connectionTimeout);
             console.error('WebSocket 연결 실패:', error);
-            isConnected = false;
-            setTimeout(connectWebSocket, 3000);
+            handleConnectionFailure();
         });
+
+        // 🔥 연결 끊김 감지
+        socket.onclose = function(event) {
+            console.log('WebSocket 연결이 닫혔습니다:', event);
+            isConnected = false;
+            updateConnectionStatus(false);
+
+            // 정상 종료가 아닌 경우 재연결 시도
+            if (event.code !== 1000 && !isReconnecting) { // 1000 = 정상 종료
+                console.log('예기치 않은 연결 끊김 감지');
+                attemptReconnection();
+            }
+        };
+
+        socket.onerror = function(error) {
+            console.error('WebSocket 오류:', error);
+            isConnected = false;
+            updateConnectionStatus(false);
+        };
+    }
+
+    // 구독 설정
+    function setupSubscriptions() {
+        try {
+            // 채팅방 구독
+            stompClient.subscribe('/topic/chat/' + roomId, function(message) {
+                try {
+                    const messageData = JSON.parse(message.body);
+                    addMessageToChat(messageData);
+                } catch (error) {
+                    console.error('채팅 메시지 파싱 실패:', error);
+                }
+            });
+
+            // 🔥 개인 메시지 구독 - 연결 끊김 알림 포함
+            stompClient.subscribe('/user/queue/chat', function(message) {
+                try {
+                    const messageData = JSON.parse(message.body);
+                    handlePersonalMessage(messageData);
+                } catch (error) {
+                    console.error('개인 메시지 파싱 실패:', error);
+                }
+            });
+
+            // 매칭 관련 구독 (필요시)
+            stompClient.subscribe('/user/queue/matching', function(message) {
+                try {
+                    const messageData = JSON.parse(message.body);
+                    handleMatchingMessage(messageData);
+                } catch (error) {
+                    console.error('매칭 메시지 파싱 실패:', error);
+                }
+            });
+
+            console.log('모든 구독 설정 완료');
+        } catch (error) {
+            console.error('구독 설정 실패:', error);
+        }
+    }
+
+    // 연결 실패 처리
+    function handleConnectionFailure() {
+        isConnected = false;
+        updateConnectionStatus(false);
+
+        if (!isReconnecting && reconnectAttempts < maxReconnectAttempts) {
+            attemptReconnection();
+        } else if (reconnectAttempts >= maxReconnectAttempts) {
+            showConnectionAlert('연결에 실패했습니다. 페이지를 새로고침해주세요.', 'error', true);
+        }
+    }
+
+    // 재연결 시도
+    function attemptReconnection() {
+        if (isReconnecting) return;
+
+        isReconnecting = true;
+        reconnectAttempts++;
+
+        console.log(`재연결 시도 ${reconnectAttempts}/${maxReconnectAttempts}`);
+
+        if (reconnectAttempts === 1) {
+            showConnectionAlert('연결이 끊어졌습니다. 재연결을 시도합니다...', 'warning');
+        }
+
+        // 지수 백오프: 2초, 4초, 8초, 16초, 32초
+        const delay = Math.min(2000 * Math.pow(2, reconnectAttempts - 1), 32000);
+
+        setTimeout(() => {
+            if (!isConnected && reconnectAttempts <= maxReconnectAttempts) {
+                connectWebSocket();
+            }
+
+            // 재연결 실패 시 다시 시도
+            setTimeout(() => {
+                if (!isConnected && reconnectAttempts < maxReconnectAttempts) {
+                    isReconnecting = false;
+                    attemptReconnection();
+                } else if (!isConnected) {
+                    isReconnecting = false;
+                    showConnectionAlert('재연결에 실패했습니다. 페이지를 새로고침해주세요.', 'error', true);
+                }
+            }, 3000);
+
+        }, delay);
+    }
+
+    // 하트비트 시작 (연결 상태 확인)
+    function startHeartbeat() {
+        if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+        }
+
+        heartbeatInterval = setInterval(() => {
+            if (isConnected && stompClient && stompClient.connected) {
+                try {
+                    // 간단한 ping 메시지 전송
+                    stompClient.send('/app/ping', {}, JSON.stringify({
+                        roomId: roomId,
+                        username: username,
+                        timestamp: Date.now()
+                    }));
+                } catch (error) {
+                    console.warn('하트비트 전송 실패:', error);
+                    isConnected = false;
+                    updateConnectionStatus(false);
+                }
+            }
+        }, 30000); // 30초마다
+    }
+
+    // 🔥 개인 메시지 처리 - 상대방 연결 끊김 포함
+    function handlePersonalMessage(messageData) {
+        console.log('개인 메시지 수신:', messageData);
+
+        switch (messageData.type) {
+            case 'CHAT_ENDED':
+                handleChatEnded(messageData.message);
+                break;
+
+            case 'PARTNER_DISCONNECTED':
+                handlePartnerDisconnected(messageData);
+                break;
+
+            case 'ROOM_FORCE_ENDED':
+                handleRoomForceEnded(messageData);
+                break;
+
+            default:
+                console.log('알 수 없는 개인 메시지 타입:', messageData.type);
+        }
+    }
+
+    // 매칭 메시지 처리
+    function handleMatchingMessage(messageData) {
+        console.log('매칭 메시지 수신:', messageData);
+
+        switch (messageData.type) {
+            case 'MATCH_FOUND':
+                // 새로운 매칭 발견 (현재 채팅 중이므로 무시)
+                break;
+
+            case 'MATCHING_CANCELLED':
+                // 매칭 취소됨
+                break;
+
+            default:
+                console.log('알 수 없는 매칭 메시지 타입:', messageData.type);
+        }
+    }
+
+    // 🔥 상대방 연결 끊김 처리
+    function handlePartnerDisconnected(messageData) {
+        console.log('상대방 연결 끊김:', messageData);
+
+        // 큰 알림 표시
+        showConnectionAlert(messageData.message, 'error', true);
+
+        // 입력 비활성화
+        disableChatInput();
+
+        // 자동 리다이렉트
+        if (messageData.autoRedirect) {
+            const delay = messageData.redirectDelay || 3000;
+            let countdown = Math.floor(delay / 1000);
+
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    updateAlertMessage(`${messageData.message}\n${countdown}초 후 홈으로 이동합니다.`);
+                } else {
+                    clearInterval(countdownInterval);
+                    window.location.href = '/';
+                }
+            }, 1000);
+        }
+    }
+
+    // 강제 종료 처리
+    function handleRoomForceEnded(messageData) {
+        console.log('채팅방 강제 종료:', messageData);
+
+        const message = messageData.reason ?
+            `관리자에 의해 채팅이 종료되었습니다.\n사유: ${messageData.reason}` :
+            '관리자에 의해 채팅이 종료되었습니다.';
+
+        showConnectionAlert(message, 'error', true);
+        disableChatInput();
+
+        if (messageData.autoRedirect) {
+            const delay = messageData.redirectDelay || 2000;
+            setTimeout(() => {
+                window.location.href = '/';
+            }, delay);
+        }
+    }
+
+    // 채팅 종료 처리
+    function handleChatEnded(message) {
+        console.log('채팅 종료:', message);
+
+        // 시스템 메시지로 종료 알림 표시
+        const messageData = {
+            type: 'SYSTEM',
+            message: message || '채팅이 종료되었습니다.',
+            senderUsername: 'SYSTEM',
+            senderAvatar: 'S',
+            timestamp: getCurrentTime()
+        };
+
+        addMessageToChat(messageData);
+        disableChatInput();
+
+        // 3초 후 홈으로 이동
+        showConnectionAlert('채팅이 종료되었습니다. 3초 후 홈으로 이동합니다.', 'warning');
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 3000);
+    }
+
+    // 채팅 입력 비활성화
+    function disableChatInput() {
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+
+        if (messageInput) {
+            messageInput.disabled = true;
+            messageInput.placeholder = '채팅이 종료되었습니다.';
+            messageInput.style.opacity = '0.5';
+            messageInput.style.cursor = 'not-allowed';
+        }
+
+        if (sendBtn) {
+            sendBtn.disabled = true;
+            sendBtn.style.opacity = '0.5';
+            sendBtn.style.cursor = 'not-allowed';
+        }
+    }
+
+    // 연결 상태 UI 업데이트
+    function updateConnectionStatus(connected) {
+        const indicator = document.getElementById('connectionStatus');
+        if (indicator) {
+            if (connected) {
+                indicator.className = 'connection-status connected';
+                indicator.innerHTML = '<i class="fas fa-wifi"></i> 연결됨';
+
+                // 3초 후 자동으로 사라지게
+                setTimeout(() => {
+                    if (indicator && indicator.parentNode) {
+                        indicator.style.transition = 'opacity 0.5s ease';
+                        indicator.style.opacity = '0';
+                        setTimeout(() => {
+                            if (indicator.parentNode) {
+                                indicator.remove();
+                            }
+                        }, 500);
+                    }
+                }, 3000);
+
+            } else {
+                indicator.className = 'connection-status disconnected';
+                indicator.innerHTML = '<i class="fas fa-exclamation-triangle"></i> 연결 끊김';
+                indicator.style.opacity = '1'; // 연결 끊김은 계속 표시
+            }
+        }
+    }
+
+    // 연결 상태 표시기 생성
+    function createConnectionStatusIndicator() {
+        // 이미 존재하면 제거
+        const existing = document.getElementById('connectionStatus');
+        if (existing) {
+            existing.remove();
+        }
+
+        const indicator = document.createElement('div');
+        indicator.id = 'connectionStatus';
+        indicator.className = 'connection-status';
+
+        // CSS 스타일 추가
+        if (!document.getElementById('connectionStatusStyle')) {
+            const style = document.createElement('style');
+            style.id = 'connectionStatusStyle';
+            style.textContent = `
+            .connection-status {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 8px 12px;
+                border-radius: 15px;
+                font-size: 0.8rem;
+                font-weight: 600;
+                z-index: 1000;
+                transition: all 0.3s ease;
+                backdrop-filter: blur(10px);
+            }
+            .connection-status.connected {
+                background: rgba(0, 255, 127, 0.2);
+                border: 1px solid rgba(0, 255, 127, 0.5);
+                color: #00ff7f;
+            }
+            .connection-status.disconnected {
+                background: rgba(255, 68, 68, 0.2);
+                border: 1px solid rgba(255, 68, 68, 0.5);
+                color: #ff4444;
+                animation: statusPulse 1s infinite;
+            }
+            @keyframes statusPulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.7; }
+            }
+        `;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(indicator);
+
+        // 초기 상태는 연결 안됨으로 설정
+        indicator.className = 'connection-status disconnected';
+        indicator.innerHTML = '<i class="fas fa-exclamation-triangle"></i> 연결 중...';
+
+        console.log('연결 상태 표시기 생성 완료');
+    }
+
+    // 연결 알림 표시
+    function showConnectionAlert(message, type = 'info', persistent = false) {
+        // 기존 알림 제거
+        const existingAlert = document.getElementById('connectionAlert');
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+
+        // 새 알림 생성
+        const alert = document.createElement('div');
+        alert.id = 'connectionAlert';
+        alert.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.95);
+        color: white;
+        padding: 25px 35px;
+        border-radius: 20px;
+        border: 2px solid;
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 600;
+        font-size: 1.1rem;
+        z-index: 10000;
+        backdrop-filter: blur(15px);
+        text-align: center;
+        min-width: 320px;
+        max-width: 500px;
+        animation: alertSlide 0.3s ease;
+        line-height: 1.5;
+        white-space: pre-line;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    `;
+
+        // 타입에 따른 색상 설정
+        switch (type) {
+            case 'success':
+                alert.style.borderColor = '#00ff7f';
+                alert.style.color = '#00ff7f';
+                break;
+            case 'error':
+                alert.style.borderColor = '#ff4444';
+                alert.style.color = '#ff4444';
+                break;
+            case 'warning':
+                alert.style.borderColor = '#ff8c00';
+                alert.style.color = '#ff8c00';
+                break;
+            default:
+                alert.style.borderColor = '#00ffff';
+                alert.style.color = '#00ffff';
+                break;
+        }
+
+        const iconMap = {
+            success: 'check-circle',
+            error: 'exclamation-triangle',
+            warning: 'exclamation-triangle',
+            info: 'info-circle'
+        };
+
+        alert.innerHTML = `
+        <div style="margin-bottom: 15px; font-size: 2rem;">
+            <i class="fas fa-${iconMap[type] || 'info-circle'}"></i>
+        </div>
+        <div id="alertMessage">${message}</div>
+        ${persistent ? '<div style="margin-top: 15px; font-size: 0.9rem; opacity: 0.8;">클릭하여 닫기</div>' : ''}
+    `;
+
+        // 애니메이션 CSS 추가
+        if (!document.getElementById('alertAnimation')) {
+            const style = document.createElement('style');
+            style.id = 'alertAnimation';
+            style.textContent = `
+            @keyframes alertSlide {
+                from {
+                    opacity: 0;
+                    transform: translate(-50%, -60%) scale(0.9);
+                }
+                to {
+                    opacity: 1;
+                    transform: translate(-50%, -50%) scale(1);
+                }
+            }
+        `;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(alert);
+
+        // 자동 제거 (persistent가 아닌 경우)
+        if (!persistent) {
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.style.animation = 'alertSlide 0.3s ease reverse';
+                    setTimeout(() => alert.remove(), 300);
+                }
+            }, type === 'error' ? 5000 : 3000);
+        } else {
+            // persistent 알림은 클릭으로 제거
+            alert.style.cursor = 'pointer';
+            alert.addEventListener('click', () => {
+                alert.style.animation = 'alertSlide 0.3s ease reverse';
+                setTimeout(() => alert.remove(), 300);
+            });
+        }
+
+        return alert;
+    }
+
+    // 알림 메시지 업데이트
+    function updateAlertMessage(newMessage) {
+        const alertMessage = document.getElementById('alertMessage');
+        if (alertMessage) {
+            alertMessage.textContent = newMessage;
+        }
     }
 
     // 메시지 입력 설정
     function setupMessageInput() {
         const messageInput = document.getElementById('messageInput');
+
+        if (!messageInput) {
+            console.error('메시지 입력 요소를 찾을 수 없습니다');
+            return;
+        }
 
         // 자동 높이 조절
         messageInput.addEventListener('input', function() {
@@ -636,30 +1172,43 @@
         });
 
         // Enter 키 처리
-        messageInput.addEventListener('keypress', function(e) {
+        messageInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 sendMessage();
             }
         });
 
+        // 포커스 설정
         messageInput.focus();
     }
 
-    // 메시지 전송 - 완전히 단순하게
+    // 메시지 전송
     function sendMessage() {
         const messageInput = document.getElementById('messageInput');
         const message = messageInput.value.trim();
 
-        if (!message || !isConnected) {
+        if (!message) {
             return;
         }
 
-        // 즉시 입력창 클리어
+        if (!isConnected) {
+            // 연결이 끊어진 경우 메시지를 큐에 저장
+            messageQueue.push(message);
+            showConnectionAlert('연결이 끊어졌습니다. 재연결 후 메시지가 전송됩니다.', 'warning');
+
+            // 재연결 시도
+            if (!isReconnecting) {
+                attemptReconnection();
+            }
+            return;
+        }
+
+        // 입력창 즉시 클리어
         messageInput.value = '';
         messageInput.style.height = 'auto';
 
-        // 메시지 전송
+        // 메시지 데이터 생성
         const messageData = {
             type: 'TEXT',
             roomId: roomId,
@@ -669,10 +1218,45 @@
         };
 
         try {
+            // WebSocket으로 메시지 전송
             stompClient.send('/app/chat.sendMessage', {}, JSON.stringify(messageData));
-            console.log('메시지 전송:', message);
+            console.log('메시지 전송 성공:', message);
         } catch (error) {
             console.error('메시지 전송 실패:', error);
+
+            // 실패한 메시지를 다시 입력창에 복원
+            messageInput.value = message;
+
+            // 오류 알림
+            showConnectionAlert('메시지 전송에 실패했습니다. 다시 시도해주세요.', 'error');
+
+            // 연결 상태 확인
+            isConnected = false;
+            updateConnectionStatus(false);
+        }
+    }
+
+    // 대기 중인 메시지 전송
+    function sendQueuedMessages() {
+        while (messageQueue.length > 0 && isConnected) {
+            const message = messageQueue.shift();
+            const messageData = {
+                type: 'TEXT',
+                roomId: roomId,
+                message: message,
+                senderUsername: username,
+                senderAvatar: userAvatar
+            };
+
+            try {
+                stompClient.send('/app/chat.sendMessage', {}, JSON.stringify(messageData));
+                console.log('대기 메시지 전송:', message);
+            } catch (error) {
+                console.error('대기 메시지 전송 실패:', error);
+                // 실패한 메시지를 다시 큐에 추가
+                messageQueue.unshift(message);
+                break;
+            }
         }
     }
 
@@ -681,15 +1265,32 @@
         console.log('메시지 수신:', messageData);
 
         const messagesContainer = document.getElementById('messagesContainer');
-        const messageElement = createMessageElement(messageData);
+        if (!messagesContainer) {
+            console.error('메시지 컨테이너를 찾을 수 없습니다');
+            return;
+        }
 
+        const messageElement = createMessageElement(messageData);
         messagesContainer.appendChild(messageElement);
+
+        // 스크롤을 맨 아래로
         scrollToBottom();
 
         // 상대방 정보 업데이트
-        if (messageData.senderUsername && messageData.senderUsername !== username && messageData.senderUsername !== 'SYSTEM') {
+        if (messageData.senderUsername &&
+            messageData.senderUsername !== username &&
+            messageData.senderUsername !== 'SYSTEM') {
             updatePartnerInfo(messageData.senderUsername, messageData.senderAvatar);
         }
+
+        // 메시지 애니메이션
+        messageElement.style.opacity = '0';
+        messageElement.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            messageElement.style.transition = 'all 0.3s ease';
+            messageElement.style.opacity = '1';
+            messageElement.style.transform = 'translateY(0)';
+        }, 50);
     }
 
     // 메시지 요소 생성
@@ -698,6 +1299,7 @@
         const isMyMessage = messageData.senderUsername === username;
         const isSystemMessage = messageData.type === 'SYSTEM';
 
+        // 메시지 타입에 따른 클래스 설정
         if (isSystemMessage) {
             messageDiv.className = 'message message-system';
         } else if (isMyMessage) {
@@ -706,112 +1308,91 @@
             messageDiv.className = 'message message-received';
         }
 
+        // 메시지 HTML 생성
         messageDiv.innerHTML = `
-            <div class="message-avatar">${messageData.senderAvatar || '?'}</div>
-            <div class="message-content">
-                <div class="message-header">
-                    <span class="message-sender">${messageData.senderUsername || 'Unknown'}</span>
-                    <span class="message-time">${messageData.timestamp || getCurrentTime()}</span>
-                </div>
-                <div class="message-text">${messageData.message}</div>
+        <div class="message-avatar">${messageData.senderAvatar || '?'}</div>
+        <div class="message-content">
+            <div class="message-header">
+                <span class="message-sender">${messageData.senderUsername || 'Unknown'}</span>
+                <span class="message-time">${messageData.timestamp || getCurrentTime()}</span>
             </div>
-        `;
+            <div class="message-text">${escapeHtml(messageData.message)}</div>
+        </div>
+    `;
 
         return messageDiv;
     }
 
-    // 현재 시간
+    // HTML 이스케이프
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // 현재 시간 반환
     function getCurrentTime() {
         const now = new Date();
         return now.getHours().toString().padStart(2, '0') + ':' +
             now.getMinutes().toString().padStart(2, '0');
     }
 
-    // 스크롤
+    // 스크롤을 맨 아래로
     function scrollToBottom() {
         const messagesContainer = document.getElementById('messagesContainer');
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        if (messagesContainer) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
     }
 
     // 상대방 정보 업데이트
     function updatePartnerInfo(partnerUsername, partnerAvatar) {
-        document.getElementById('partnerName').textContent = partnerUsername;
-        document.getElementById('partnerAvatar').textContent = partnerAvatar || partnerUsername.substring(0, 1).toUpperCase();
-    }
+        const partnerName = document.getElementById('partnerName');
+        const partnerAvatarElement = document.getElementById('partnerAvatar');
 
-    // 개인 메시지 처리
-    function handlePersonalMessage(messageData) {
-        if (messageData.type === 'CHAT_ENDED') {
-            addMessageToChat({
-                type: 'SYSTEM',
-                message: '상대방이 채팅을 종료했습니다.',
-                senderUsername: 'SYSTEM',
-                senderAvatar: 'S',
-                timestamp: getCurrentTime()
-            });
+        if (partnerName && partnerUsername) {
+            partnerName.textContent = partnerUsername;
+        }
 
-            setTimeout(() => {
-                window.location.href = '/';
-            }, 3000);
+        if (partnerAvatarElement && partnerAvatar) {
+            partnerAvatarElement.textContent = partnerAvatar;
+        } else if (partnerAvatarElement && partnerUsername) {
+            partnerAvatarElement.textContent = partnerUsername.substring(0, 1).toUpperCase();
         }
     }
 
-    // 채팅 종료 관련
-    function showEndChatModal() {
-        document.getElementById('endChatModal').style.display = 'block';
-    }
+    // 페이지 언로드 핸들러 설정
+    function setupPageUnloadHandlers() {
+        // beforeunload 이벤트 (브라우저 닫기, 새로고침 등)
+        window.addEventListener('beforeunload', function(event) {
+            console.log('페이지 언로드 감지');
+            cleanup();
+        });
 
-    function closeModal() {
-        document.getElementById('endChatModal').style.display = 'none';
-    }
+        // pagehide 이벤트 (모바일에서 더 안정적)
+        window.addEventListener('pagehide', function(event) {
+            console.log('페이지 숨김 감지');
+            cleanup();
+        });
 
-    async function endChat() {
-        try {
-            const response = await fetch('/api/chat/end', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    roomId: roomId
-                })
-            });
-
-            if (response.ok) {
-                if (stompClient && isConnected) {
-                    stompClient.send('/app/chat.removeUser', {}, JSON.stringify({
-                        roomId: roomId
-                    }));
+        // visibilitychange 이벤트 (탭 전환 감지)
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                console.log('탭이 백그라운드로 이동');
+            } else {
+                console.log('탭이 포그라운드로 이동');
+                // 연결 상태 확인
+                if (!isConnected && stompClient) {
+                    console.log('탭 복귀 후 연결 상태 확인');
+                    setTimeout(() => {
+                        if (!isConnected) {
+                            attemptReconnection();
+                        }
+                    }, 1000);
                 }
-
-                setTimeout(() => {
-                    window.location.href = '/';
-                }, 1000);
             }
-        } catch (error) {
-            console.error('채팅 종료 실패:', error);
-        }
-
-        closeModal();
+        })
     }
-
-    // 모달 외부 클릭 시 닫기
-    window.addEventListener('click', function(event) {
-        const modal = document.getElementById('endChatModal');
-        if (event.target === modal) {
-            closeModal();
-        }
-    });
-
-    // 페이지 언로드 시 정리
-    window.addEventListener('beforeunload', function() {
-        if (stompClient && isConnected) {
-            stompClient.send('/app/chat.removeUser', {}, JSON.stringify({
-                roomId: roomId
-            }));
-            stompClient.disconnect();
-        }
-    });
 </script>
 </body>
 </html>

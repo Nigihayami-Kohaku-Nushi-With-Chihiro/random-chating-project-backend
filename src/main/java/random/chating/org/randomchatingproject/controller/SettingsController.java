@@ -5,17 +5,25 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import random.chating.org.randomchatingproject.dto.EmailChangeRequest;
 import random.chating.org.randomchatingproject.dto.AccountSettingsRequest;
 import random.chating.org.randomchatingproject.dto.PasswordChangeRequest;
+import random.chating.org.randomchatingproject.dto.VerifyRequest;
 import random.chating.org.randomchatingproject.entity.User;
 import random.chating.org.randomchatingproject.entity.UserSettings;
+import random.chating.org.randomchatingproject.entity.VerifyMails;
+import random.chating.org.randomchatingproject.repository.UserRepository;
+import random.chating.org.randomchatingproject.repository.VerifyMailRepository;
 import random.chating.org.randomchatingproject.service.SettingsService;
 
 import jakarta.servlet.http.HttpServletResponse;
+import random.chating.org.randomchatingproject.service.VerifyService;
+
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Controller
@@ -23,6 +31,8 @@ import java.util.Map;
 public class SettingsController {
 
     private final SettingsService settingsService;
+    private final VerifyService verifyService;
+    private final VerifyMailRepository verifyMailRepository;
 
     /**
      * 계정 설정 페이지
@@ -269,6 +279,40 @@ public class SettingsController {
             return ResponseEntity.badRequest()
                     .body(new ApiResponse(false, e.getMessage()));
         }
+    }
+
+    @GetMapping("/verify-mail")
+    public String  verifyEmail(@AuthenticationPrincipal User user, Model model) {
+        model.addAttribute("email", user.getEmail());
+
+        return "verify-mail";
+    }
+
+    @PostMapping("/api/verify-mail")
+    @Transactional
+    public ResponseEntity<ApiResponse> verifyMail(
+            @AuthenticationPrincipal User user,
+            @RequestBody VerifyRequest request) {
+
+        VerifyService.VerifyResponse verifyResult = verifyService.verifyMail(user.getEmail(), request.getCode());
+        return ResponseEntity.ok(new ApiResponse(verifyResult.success, verifyResult.message));
+    }
+
+    @PostMapping("/api/resend-verification-code")
+    public ResponseEntity<ApiResponse> resendCode(@AuthenticationPrincipal User user) {
+
+        // 기존 인증 요청 확인
+        Optional<VerifyMails> verifyMails = verifyMailRepository.findByEmail(user.getEmail());
+        if (verifyMails.isPresent()) {
+
+            ResponseEntity<VerifyService.VerifyResponse> result = verifyService.resendVerifyMail(user.getEmail());
+            VerifyService.VerifyResponse verifyResponse = result.getBody();
+
+            return ResponseEntity.ok(new ApiResponse(verifyResponse.success, verifyResponse.message));
+        }
+
+        // 인증 요청이 없는 경우
+        return ResponseEntity.badRequest().body(new ApiResponse(false, "인증 요청을 찾을 수 없습니다"));
     }
 
     // API 응답용 내부 클래스
